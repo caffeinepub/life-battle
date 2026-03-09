@@ -19,6 +19,9 @@ export function useGetMatches() {
       return actor.getMatches();
     },
     enabled: !!actor && !isFetching,
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 }
 

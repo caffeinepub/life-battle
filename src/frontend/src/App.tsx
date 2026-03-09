@@ -1,9 +1,11 @@
 import { Toaster } from "@/components/ui/sonner";
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { UserRole } from "./backend.d";
 import { useInternetIdentity } from "./hooks/useInternetIdentity";
 import { useGetCallerProfile, useGetCallerRole } from "./hooks/useQueries";
 
+import AdminLoginPage from "./pages/AdminLoginPage";
 import HomePage from "./pages/HomePage";
 import LeaderboardPage from "./pages/LeaderboardPage";
 // Player pages
@@ -35,6 +37,7 @@ export type PlayerPage =
   | "wallet";
 
 export type AdminPage =
+  | "admin-login"
   | "admin-dashboard"
   | "admin-create"
   | "admin-edit"
@@ -51,6 +54,7 @@ export default function App() {
   const { identity, isInitializing } = useInternetIdentity();
   const [nav, setNav] = useState<AppNav>({ page: "home" });
   const [isAdminMode, setIsAdminMode] = useState(false);
+  const queryClient = useQueryClient();
 
   const isLoggedIn = !!identity && !identity.getPrincipal().isAnonymous();
 
@@ -112,6 +116,25 @@ export default function App() {
 
   const playerId = profile.playerId;
 
+  // Admin login page — full-screen, no chrome
+  if (nav.page === "admin-login") {
+    return (
+      <div className="min-h-screen bg-background">
+        <AdminLoginPage
+          onAdminLoginSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ["actor"] });
+            queryClient.invalidateQueries({ queryKey: ["callerRole"] });
+            queryClient.invalidateQueries({ queryKey: ["matches"] });
+            setIsAdminMode(true);
+            navigate({ page: "admin-dashboard" });
+          }}
+          onCancel={() => navigate({ page: "home" })}
+        />
+        <Toaster richColors theme="dark" />
+      </div>
+    );
+  }
+
   // Admin mode
   if (isAdminMode && isAdmin) {
     return (
@@ -128,6 +151,7 @@ export default function App() {
             onExitAdmin={() => {
               setIsAdminMode(false);
               navigate({ page: "home" });
+              queryClient.invalidateQueries({ queryKey: ["matches"] });
             }}
           />
           <main className="flex-1 overflow-y-auto pb-6">
@@ -219,8 +243,7 @@ export default function App() {
             navigate={navigate}
             isAdmin={isAdmin}
             onAdminClick={() => {
-              setIsAdminMode(true);
-              navigate({ page: "admin-dashboard" });
+              navigate({ page: "admin-login" });
             }}
           />
         )}
@@ -240,6 +263,7 @@ function getPageTitle(page: AppPage): string {
     profile: "My Profile",
     history: "Match History",
     wallet: "Wallet",
+    "admin-login": "Admin Login",
     "admin-dashboard": "Admin Dashboard",
     "admin-create": "Create Match",
     "admin-edit": "Edit Match",
