@@ -6,7 +6,7 @@ import { motion } from "motion/react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
-import { useRegisterPlayer, useSaveCallerProfile } from "../hooks/useQueries";
+import { useRegisterPlayer } from "../hooks/useQueries";
 
 interface LoginPageProps {
   onLoginSuccess: () => void;
@@ -16,11 +16,10 @@ interface LoginPageProps {
 export default function LoginPage({ isRegistration }: LoginPageProps) {
   const { login, isLoggingIn, isLoginError } = useInternetIdentity();
   const [username, setUsername] = useState("");
-  const [referralCode, setReferralCode] = useState("");
+  const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const registerPlayer = useRegisterPlayer();
-  const saveProfile = useSaveCallerProfile();
 
   const handleRegister = async () => {
     if (!username.trim()) {
@@ -29,13 +28,22 @@ export default function LoginPage({ isRegistration }: LoginPageProps) {
     }
     setIsSubmitting(true);
     try {
-      const playerId = await registerPlayer.mutateAsync({
+      await registerPlayer.mutateAsync({
         username: username.trim(),
+        email: email.trim(),
       });
-      await saveProfile.mutateAsync({ username: username.trim(), playerId });
-      toast.success("Welcome to Life Battle! 🔥");
-    } catch {
-      toast.error("Registration failed. Please try again.");
+      toast.success(
+        "Welcome to Life Battle! 🔥 Your profile has been created.",
+      );
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      if (errorMsg?.toLowerCase().includes("already registered")) {
+        toast.error("You already have an account. Please reload the page.");
+      } else if (errorMsg) {
+        toast.error(errorMsg);
+      } else {
+        toast.error("Registration failed. Please try again.");
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -121,18 +129,19 @@ export default function LoginPage({ isRegistration }: LoginPageProps) {
                 </div>
                 <div>
                   <Label
-                    htmlFor="referral"
+                    htmlFor="email"
                     className="text-xs text-muted-foreground uppercase tracking-wide mb-1 block"
                   >
-                    Referral Code (optional)
+                    Email (optional)
                   </Label>
                   <Input
-                    id="referral"
-                    value={referralCode}
-                    onChange={(e) => setReferralCode(e.target.value)}
-                    placeholder="Enter referral code"
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="your@email.com"
                     className="bg-background border-border font-mono"
-                    data-ocid="register.referral.input"
+                    data-ocid="register.email.input"
                   />
                 </div>
                 <Button

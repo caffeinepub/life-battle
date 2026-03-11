@@ -1,18 +1,24 @@
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { Calendar, Copy, Trophy, Users, Zap } from "lucide-react";
+import { Calendar, Copy, MapPin, Trophy, Users, Zap } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { AppNav } from "../App";
 import { MatchStatus } from "../backend.d";
 import {
+  useGetMatchRoomDetails,
   useGetMatches,
   useGetPlayerDetails,
   useJoinMatch,
 } from "../hooks/useQueries";
-import { formatAmount, formatDate, getStatusLabel } from "../utils/format";
+import {
+  formatAmount,
+  formatDate,
+  getStatusLabel,
+  getSubTypeLabel,
+} from "../utils/format";
 
 interface MatchDetailPageProps {
   matchId: number;
@@ -30,6 +36,7 @@ export default function MatchDetailPage({
   const { data: matches, isLoading } = useGetMatches();
   const { data: playerDetails } = useGetPlayerDetails(playerId);
   const joinMatch = useJoinMatch();
+  const { data: roomDetails } = useGetMatchRoomDetails(matchId);
 
   const match = matches?.find((m) => m.id === matchId);
 
@@ -43,7 +50,7 @@ export default function MatchDetailPage({
       await joinMatch.mutateAsync(match.id);
       toast.success("🎮 Joined match successfully!");
     } catch {
-      toast.error("Failed to join. Check wallet balance.");
+      toast.error("Failed to join. Please try again.");
     } finally {
       setIsJoining(false);
     }
@@ -76,7 +83,7 @@ export default function MatchDetailPage({
   }
 
   const isFree = match.entryFee === 0n;
-  const isLive = match.status === MatchStatus.live;
+  const isOngoing = match.status === MatchStatus.ongoing;
   const isCompleted = match.status === MatchStatus.completed;
   const isUpcoming = match.status === MatchStatus.upcoming;
 
@@ -88,7 +95,7 @@ export default function MatchDetailPage({
         animate={{ opacity: 1, y: 0 }}
         className={cn(
           "relative overflow-hidden rounded-2xl border p-5",
-          isLive &&
+          isOngoing &&
             "border-green-500/40 bg-gradient-to-br from-green-500/10 to-card",
           isUpcoming &&
             "border-primary/30 bg-gradient-to-br from-primary/10 to-card",
@@ -99,23 +106,28 @@ export default function MatchDetailPage({
           <span
             className={cn(
               "text-xs font-mono font-bold px-2 py-0.5 rounded-full",
-              isLive && "badge-live",
+              isOngoing && "badge-live",
               isUpcoming && "badge-upcoming",
               isCompleted && "badge-completed",
             )}
           >
             {getStatusLabel(match.status)}
           </span>
-          <span
-            className={cn(
-              "text-xs font-mono px-2 py-0.5 rounded-full border",
-              isFree
-                ? "text-green-400 border-green-400/40 bg-green-400/10"
-                : "text-primary border-primary/40 bg-primary/10",
-            )}
-          >
-            {isFree ? "FREE" : "PAID"}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-mono px-2 py-0.5 rounded-full border border-primary/40 bg-primary/10 text-primary">
+              {getSubTypeLabel(match.matchSubType)}
+            </span>
+            <span
+              className={cn(
+                "text-xs font-mono px-2 py-0.5 rounded-full border",
+                isFree
+                  ? "text-green-400 border-green-400/40 bg-green-400/10"
+                  : "text-primary border-primary/40 bg-primary/10",
+              )}
+            >
+              {isFree ? "FREE" : "PAID"}
+            </span>
+          </div>
         </div>
 
         <h2 className="font-heading font-black text-2xl text-foreground mb-1">
@@ -150,13 +162,31 @@ export default function MatchDetailPage({
               {formatAmount(match.prizeAmount)}
             </p>
           </div>
+          <div className="bg-background/50 rounded-xl p-3">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">
+              Players
+            </p>
+            <p className="font-heading font-bold text-lg text-foreground flex items-center gap-1">
+              <Users className="h-4 w-4 text-muted-foreground" />
+              {match.playerIds.length} / {match.totalPlayers.toString()}
+            </p>
+          </div>
+          <div className="bg-background/50 rounded-xl p-3">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">
+              Map
+            </p>
+            <p className="font-heading font-bold text-sm text-foreground flex items-center gap-1 truncate">
+              <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              {match.mapName || "TBD"}
+            </p>
+          </div>
         </div>
 
-        {isLive && (
+        {isOngoing && (
           <div className="mt-3 flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
             <span className="text-green-400 font-mono text-xs font-bold">
-              MATCH IS LIVE!
+              MATCH IS ONGOING!
             </span>
           </div>
         )}
@@ -175,8 +205,8 @@ export default function MatchDetailPage({
         </p>
       </div>
 
-      {/* Room credentials — only when live */}
-      {isLive && match.roomId && (
+      {/* Room credentials — only when ongoing AND player joined */}
+      {isOngoing && (
         <motion.div
           initial={{ opacity: 0, scale: 0.96 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -186,73 +216,61 @@ export default function MatchDetailPage({
           <h3 className="font-heading font-bold text-sm text-green-400 uppercase tracking-wide">
             🎮 Room Credentials
           </h3>
-          <div>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">
-              Room ID
+          {roomDetails ? (
+            <>
+              <div>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">
+                  Room ID
+                </p>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono font-bold text-foreground">
+                    {roomDetails[0]}
+                  </span>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-6 w-6"
+                    onClick={() => copyToClipboard(roomDetails[0], "Room ID")}
+                    data-ocid="match_detail.room_id.button"
+                  >
+                    <Copy className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+              {roomDetails[1] && (
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">
+                    Room Password
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-bold text-foreground">
+                      {roomDetails[1]}
+                    </span>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6"
+                      onClick={() =>
+                        copyToClipboard(roomDetails[1], "Room Password")
+                      }
+                      data-ocid="match_detail.room_password.button"
+                    >
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Join this match to see room details
             </p>
-            <div className="flex items-center gap-2">
-              <span className="font-mono font-bold text-foreground">
-                {match.roomId}
-              </span>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-6 w-6"
-                onClick={() => copyToClipboard(match.roomId, "Room ID")}
-                data-ocid="match_detail.room_id.button"
-              >
-                <Copy className="h-3 w-3" />
-              </Button>
-            </div>
-          </div>
+          )}
         </motion.div>
       )}
 
-      {/* Players */}
-      <div className="rounded-xl border border-border bg-card p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <Users className="h-4 w-4 text-muted-foreground" />
-          <h3 className="font-heading font-bold text-sm text-foreground">
-            Players ({match.playerIds.length})
-          </h3>
-        </div>
-        {match.playerIds.length === 0 ? (
-          <p
-            className="text-xs text-muted-foreground"
-            data-ocid="match_detail.players.empty_state"
-          >
-            No players yet. Be the first to join!
-          </p>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            {Array.from(match.playerIds)
-              .slice(0, 20)
-              .map((pid, i) => (
-                <div
-                  key={pid}
-                  className={cn(
-                    "px-2 py-1 rounded-lg text-xs font-mono border",
-                    match.winnerId === pid
-                      ? "bg-primary/20 border-primary/40 text-primary"
-                      : "bg-muted border-border text-muted-foreground",
-                  )}
-                  data-ocid={`match_detail.players.item.${i + 1}`}
-                >
-                  {match.winnerId === pid && "🏆 "}
-                  Player #{pid}
-                </div>
-              ))}
-            {match.playerIds.length > 20 && (
-              <div className="px-2 py-1 rounded-lg text-xs font-mono border border-border text-muted-foreground">
-                +{match.playerIds.length - 20} more
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
       {/* Winner announcement */}
-      {isCompleted && match.winnerId !== undefined && (
+      {isCompleted && match.winnerName && (
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -263,9 +281,14 @@ export default function MatchDetailPage({
           <h3 className="font-heading font-black text-lg text-primary">
             Winner!
           </h3>
-          <p className="text-sm text-foreground font-mono mt-1">
-            Player #{match.winnerId}
+          <p className="text-sm text-foreground font-mono mt-1 font-bold">
+            {match.winnerName}
           </p>
+          {match.resultKills > 0n && (
+            <p className="text-xs text-muted-foreground mt-1">
+              {match.resultKills.toString()} kills
+            </p>
+          )}
           <p className="text-xs text-muted-foreground mt-1">
             Prize: {formatAmount(match.prizeAmount)}
           </p>

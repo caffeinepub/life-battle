@@ -9,22 +9,47 @@
 import { IDL } from '@icp-sdk/core/candid';
 
 export const PlayerId = IDL.Nat32;
+export const RequestId = IDL.Nat32;
 export const UserRole = IDL.Variant({
   'admin' : IDL.Null,
   'user' : IDL.Null,
   'guest' : IDL.Null,
 });
 export const MatchType = IDL.Variant({ 'free' : IDL.Null, 'paid' : IDL.Null });
+export const MatchSubType = IDL.Variant({
+  'lossToWin' : IDL.Null,
+  'lonewolf1v1' : IDL.Null,
+  'lonewolf2v2' : IDL.Null,
+  'cs1v1' : IDL.Null,
+  'cs2v2' : IDL.Null,
+  'cs4v4' : IDL.Null,
+  'perKill' : IDL.Null,
+  'survival' : IDL.Null,
+});
 export const Time = IDL.Int;
 export const MatchId = IDL.Nat32;
 export const UserProfile = IDL.Record({
   'username' : IDL.Text,
   'playerId' : IDL.Opt(PlayerId),
+  'email' : IDL.Text,
+});
+export const DepositRequest = IDL.Record({
+  'id' : RequestId,
+  'status' : IDL.Variant({
+    'pending' : IDL.Null,
+    'approved' : IDL.Null,
+    'rejected' : IDL.Null,
+  }),
+  'playerId' : PlayerId,
+  'adminNote' : IDL.Text,
+  'timestamp' : Time,
+  'amount' : IDL.Nat,
+  'transactionId' : IDL.Text,
 });
 export const MatchStatus = IDL.Variant({
   'upcoming' : IDL.Null,
-  'live' : IDL.Null,
   'completed' : IDL.Null,
+  'ongoing' : IDL.Null,
 });
 export const Match = IDL.Record({
   'id' : MatchId,
@@ -32,8 +57,13 @@ export const Match = IDL.Record({
   'matchType' : MatchType,
   'status' : MatchStatus,
   'title' : IDL.Text,
-  'winnerId' : IDL.Opt(PlayerId),
+  'mapName' : IDL.Text,
+  'totalPlayers' : IDL.Nat,
   'prizeAmount' : IDL.Nat,
+  'roomPassword' : IDL.Text,
+  'resultKills' : IDL.Nat,
+  'winnerName' : IDL.Text,
+  'matchSubType' : MatchSubType,
   'entryFee' : IDL.Nat,
   'roomId' : IDL.Text,
   'scheduledAt' : Time,
@@ -42,11 +72,27 @@ export const Player = IDL.Record({
   'id' : PlayerId,
   'referralCode' : IDL.Text,
   'username' : IDL.Text,
+  'winningBalance' : IDL.Nat,
   'wins' : IDL.Nat,
+  'email' : IDL.Text,
   'referredBy' : IDL.Opt(IDL.Text),
   'totalEarnings' : IDL.Nat,
   'matchesPlayed' : IDL.Nat,
+  'totalKills' : IDL.Nat,
   'walletBalance' : IDL.Nat,
+});
+export const WithdrawRequest = IDL.Record({
+  'id' : RequestId,
+  'status' : IDL.Variant({
+    'pending' : IDL.Null,
+    'approved' : IDL.Null,
+    'rejected' : IDL.Null,
+  }),
+  'playerId' : PlayerId,
+  'adminNote' : IDL.Text,
+  'timestamp' : Time,
+  'upiId' : IDL.Text,
+  'amount' : IDL.Nat,
 });
 export const TxId = IDL.Nat32;
 export const TxType = IDL.Variant({ 'credit' : IDL.Null, 'debit' : IDL.Null });
@@ -62,9 +108,22 @@ export const WalletTransaction = IDL.Record({
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
   'adjustPlayerWallet' : IDL.Func([PlayerId, IDL.Int, IDL.Text], [], []),
+  'approveDepositRequest' : IDL.Func([RequestId], [], []),
+  'approveWithdrawRequest' : IDL.Func([RequestId], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
   'createMatch' : IDL.Func(
-      [IDL.Text, MatchType, IDL.Nat, IDL.Nat, Time, IDL.Text],
+      [
+        IDL.Text,
+        MatchType,
+        MatchSubType,
+        IDL.Text,
+        IDL.Nat,
+        IDL.Nat,
+        IDL.Nat,
+        Time,
+        IDL.Text,
+        IDL.Text,
+      ],
       [MatchId],
       [],
     ),
@@ -72,14 +131,30 @@ export const idlService = IDL.Service({
   'getAdminDashboard' : IDL.Func([], [IDL.Nat, IDL.Nat, IDL.Nat], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
+  'getDepositRequests' : IDL.Func([], [IDL.Vec(DepositRequest)], ['query']),
   'getLeaderboard' : IDL.Func(
       [],
-      [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Opt(IDL.Nat)))],
+      [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Nat, IDL.Nat, IDL.Nat))],
+      ['query'],
+    ),
+  'getMatchRoomDetails' : IDL.Func(
+      [MatchId],
+      [IDL.Opt(IDL.Tuple(IDL.Text, IDL.Text))],
       ['query'],
     ),
   'getMatches' : IDL.Func([], [IDL.Vec(Match)], ['query']),
+  'getPlayerDepositRequests' : IDL.Func(
+      [],
+      [IDL.Vec(DepositRequest)],
+      ['query'],
+    ),
   'getPlayerDetails' : IDL.Func([PlayerId], [Player], ['query']),
   'getPlayerMatches' : IDL.Func([PlayerId], [IDL.Vec(Match)], ['query']),
+  'getPlayerWithdrawRequests' : IDL.Func(
+      [],
+      [IDL.Vec(WithdrawRequest)],
+      ['query'],
+    ),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
       [IDL.Opt(UserProfile)],
@@ -90,19 +165,28 @@ export const idlService = IDL.Service({
       [IDL.Vec(WalletTransaction)],
       ['query'],
     ),
+  'getWithdrawRequests' : IDL.Func([], [IDL.Vec(WithdrawRequest)], ['query']),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'joinMatch' : IDL.Func([MatchId], [], []),
-  'registerPlayer' : IDL.Func([IDL.Text], [PlayerId], []),
+  'registerPlayer' : IDL.Func([IDL.Text, IDL.Text], [PlayerId], []),
+  'rejectDepositRequest' : IDL.Func([RequestId, IDL.Text], [], []),
+  'rejectWithdrawRequest' : IDL.Func([RequestId, IDL.Text], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
-  'setMatchResult' : IDL.Func([MatchId, PlayerId], [], []),
+  'setMatchResult' : IDL.Func([MatchId, IDL.Text, IDL.Nat], [], []),
+  'submitDepositRequest' : IDL.Func([IDL.Nat, IDL.Text], [RequestId], []),
+  'submitWithdrawRequest' : IDL.Func([IDL.Nat, IDL.Text], [RequestId], []),
   'updateMatch' : IDL.Func(
       [
         MatchId,
         IDL.Text,
         MatchType,
+        MatchSubType,
+        IDL.Text,
+        IDL.Nat,
         IDL.Nat,
         IDL.Nat,
         Time,
+        IDL.Text,
         IDL.Text,
         MatchStatus,
       ],
@@ -115,22 +199,47 @@ export const idlInitArgs = [];
 
 export const idlFactory = ({ IDL }) => {
   const PlayerId = IDL.Nat32;
+  const RequestId = IDL.Nat32;
   const UserRole = IDL.Variant({
     'admin' : IDL.Null,
     'user' : IDL.Null,
     'guest' : IDL.Null,
   });
   const MatchType = IDL.Variant({ 'free' : IDL.Null, 'paid' : IDL.Null });
+  const MatchSubType = IDL.Variant({
+    'lossToWin' : IDL.Null,
+    'lonewolf1v1' : IDL.Null,
+    'lonewolf2v2' : IDL.Null,
+    'cs1v1' : IDL.Null,
+    'cs2v2' : IDL.Null,
+    'cs4v4' : IDL.Null,
+    'perKill' : IDL.Null,
+    'survival' : IDL.Null,
+  });
   const Time = IDL.Int;
   const MatchId = IDL.Nat32;
   const UserProfile = IDL.Record({
     'username' : IDL.Text,
     'playerId' : IDL.Opt(PlayerId),
+    'email' : IDL.Text,
+  });
+  const DepositRequest = IDL.Record({
+    'id' : RequestId,
+    'status' : IDL.Variant({
+      'pending' : IDL.Null,
+      'approved' : IDL.Null,
+      'rejected' : IDL.Null,
+    }),
+    'playerId' : PlayerId,
+    'adminNote' : IDL.Text,
+    'timestamp' : Time,
+    'amount' : IDL.Nat,
+    'transactionId' : IDL.Text,
   });
   const MatchStatus = IDL.Variant({
     'upcoming' : IDL.Null,
-    'live' : IDL.Null,
     'completed' : IDL.Null,
+    'ongoing' : IDL.Null,
   });
   const Match = IDL.Record({
     'id' : MatchId,
@@ -138,8 +247,13 @@ export const idlFactory = ({ IDL }) => {
     'matchType' : MatchType,
     'status' : MatchStatus,
     'title' : IDL.Text,
-    'winnerId' : IDL.Opt(PlayerId),
+    'mapName' : IDL.Text,
+    'totalPlayers' : IDL.Nat,
     'prizeAmount' : IDL.Nat,
+    'roomPassword' : IDL.Text,
+    'resultKills' : IDL.Nat,
+    'winnerName' : IDL.Text,
+    'matchSubType' : MatchSubType,
     'entryFee' : IDL.Nat,
     'roomId' : IDL.Text,
     'scheduledAt' : Time,
@@ -148,11 +262,27 @@ export const idlFactory = ({ IDL }) => {
     'id' : PlayerId,
     'referralCode' : IDL.Text,
     'username' : IDL.Text,
+    'winningBalance' : IDL.Nat,
     'wins' : IDL.Nat,
+    'email' : IDL.Text,
     'referredBy' : IDL.Opt(IDL.Text),
     'totalEarnings' : IDL.Nat,
     'matchesPlayed' : IDL.Nat,
+    'totalKills' : IDL.Nat,
     'walletBalance' : IDL.Nat,
+  });
+  const WithdrawRequest = IDL.Record({
+    'id' : RequestId,
+    'status' : IDL.Variant({
+      'pending' : IDL.Null,
+      'approved' : IDL.Null,
+      'rejected' : IDL.Null,
+    }),
+    'playerId' : PlayerId,
+    'adminNote' : IDL.Text,
+    'timestamp' : Time,
+    'upiId' : IDL.Text,
+    'amount' : IDL.Nat,
   });
   const TxId = IDL.Nat32;
   const TxType = IDL.Variant({ 'credit' : IDL.Null, 'debit' : IDL.Null });
@@ -168,9 +298,22 @@ export const idlFactory = ({ IDL }) => {
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
     'adjustPlayerWallet' : IDL.Func([PlayerId, IDL.Int, IDL.Text], [], []),
+    'approveDepositRequest' : IDL.Func([RequestId], [], []),
+    'approveWithdrawRequest' : IDL.Func([RequestId], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
     'createMatch' : IDL.Func(
-        [IDL.Text, MatchType, IDL.Nat, IDL.Nat, Time, IDL.Text],
+        [
+          IDL.Text,
+          MatchType,
+          MatchSubType,
+          IDL.Text,
+          IDL.Nat,
+          IDL.Nat,
+          IDL.Nat,
+          Time,
+          IDL.Text,
+          IDL.Text,
+        ],
         [MatchId],
         [],
       ),
@@ -178,14 +321,30 @@ export const idlFactory = ({ IDL }) => {
     'getAdminDashboard' : IDL.Func([], [IDL.Nat, IDL.Nat, IDL.Nat], ['query']),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
+    'getDepositRequests' : IDL.Func([], [IDL.Vec(DepositRequest)], ['query']),
     'getLeaderboard' : IDL.Func(
         [],
-        [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Opt(IDL.Nat)))],
+        [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Nat, IDL.Nat, IDL.Nat))],
+        ['query'],
+      ),
+    'getMatchRoomDetails' : IDL.Func(
+        [MatchId],
+        [IDL.Opt(IDL.Tuple(IDL.Text, IDL.Text))],
         ['query'],
       ),
     'getMatches' : IDL.Func([], [IDL.Vec(Match)], ['query']),
+    'getPlayerDepositRequests' : IDL.Func(
+        [],
+        [IDL.Vec(DepositRequest)],
+        ['query'],
+      ),
     'getPlayerDetails' : IDL.Func([PlayerId], [Player], ['query']),
     'getPlayerMatches' : IDL.Func([PlayerId], [IDL.Vec(Match)], ['query']),
+    'getPlayerWithdrawRequests' : IDL.Func(
+        [],
+        [IDL.Vec(WithdrawRequest)],
+        ['query'],
+      ),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
         [IDL.Opt(UserProfile)],
@@ -196,19 +355,28 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(WalletTransaction)],
         ['query'],
       ),
+    'getWithdrawRequests' : IDL.Func([], [IDL.Vec(WithdrawRequest)], ['query']),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'joinMatch' : IDL.Func([MatchId], [], []),
-    'registerPlayer' : IDL.Func([IDL.Text], [PlayerId], []),
+    'registerPlayer' : IDL.Func([IDL.Text, IDL.Text], [PlayerId], []),
+    'rejectDepositRequest' : IDL.Func([RequestId, IDL.Text], [], []),
+    'rejectWithdrawRequest' : IDL.Func([RequestId, IDL.Text], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
-    'setMatchResult' : IDL.Func([MatchId, PlayerId], [], []),
+    'setMatchResult' : IDL.Func([MatchId, IDL.Text, IDL.Nat], [], []),
+    'submitDepositRequest' : IDL.Func([IDL.Nat, IDL.Text], [RequestId], []),
+    'submitWithdrawRequest' : IDL.Func([IDL.Nat, IDL.Text], [RequestId], []),
     'updateMatch' : IDL.Func(
         [
           MatchId,
           IDL.Text,
           MatchType,
+          MatchSubType,
+          IDL.Text,
+          IDL.Nat,
           IDL.Nat,
           IDL.Nat,
           Time,
+          IDL.Text,
           IDL.Text,
           MatchStatus,
         ],

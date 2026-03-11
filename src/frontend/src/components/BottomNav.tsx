@@ -62,17 +62,27 @@ export default function BottomNav({
             </button>
           );
         })}
-        {isAdmin && (
-          <button
-            type="button"
-            onClick={onAdminClick}
-            className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl text-muted-foreground hover:text-primary transition-all"
-            data-ocid="nav.admin.link"
-          >
-            <ShieldCheck className="h-5 w-5" />
-            <span className="text-[10px] font-body font-medium">Admin</span>
-          </button>
-        )}
+        {/* Always show Admin button — login page handles authentication */}
+        <button
+          type="button"
+          onClick={onAdminClick}
+          className={cn(
+            "flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all",
+            isAdmin
+              ? "text-primary"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+          data-ocid="nav.admin.link"
+        >
+          <ShieldCheck
+            className={cn(
+              "h-5 w-5 transition-all",
+              isAdmin && "drop-shadow-[0_0_6px_oklch(0.7_0.19_42)]",
+            )}
+          />
+          <span className="text-[10px] font-body font-medium">Admin</span>
+          {isAdmin && <div className="w-1 h-1 rounded-full bg-primary" />}
+        </button>
       </div>
     </nav>
   );

@@ -1,10 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
+  DepositRequest,
   Match,
   MatchStatus,
+  MatchSubType,
   MatchType,
   Player,
+  RequestId,
   WalletTransaction,
+  WithdrawRequest,
 } from "../backend.d";
 import { useActor } from "./useActor";
 
@@ -88,13 +92,25 @@ export function useGetWalletTransactions(playerId: number | undefined) {
 
 export function useGetLeaderboard() {
   const { actor, isFetching } = useActor();
-  return useQuery<Array<[string, bigint | null]>>({
+  return useQuery<Array<[string, bigint, bigint, bigint]>>({
     queryKey: ["leaderboard"],
     queryFn: async () => {
       if (!actor) return [];
       return actor.getLeaderboard();
     },
     enabled: !!actor && !isFetching,
+  });
+}
+
+export function useGetMatchRoomDetails(matchId: number | undefined) {
+  const { actor, isFetching } = useActor();
+  return useQuery<[string, string] | null>({
+    queryKey: ["matchRoomDetails", matchId],
+    queryFn: async () => {
+      if (!actor || matchId === undefined) return null;
+      return actor.getMatchRoomDetails(matchId);
+    },
+    enabled: !!actor && !isFetching && matchId !== undefined,
   });
 }
 
@@ -122,15 +138,68 @@ export function useGetAdminDashboard() {
   });
 }
 
+// ─── Wallet / Deposit / Withdraw queries ─────────────────────────
+
+export function useGetPlayerDepositRequests() {
+  const { actor, isFetching } = useActor();
+  return useQuery<DepositRequest[]>({
+    queryKey: ["playerDepositRequests"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getPlayerDepositRequests();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useGetPlayerWithdrawRequests() {
+  const { actor, isFetching } = useActor();
+  return useQuery<WithdrawRequest[]>({
+    queryKey: ["playerWithdrawRequests"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getPlayerWithdrawRequests();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useGetDepositRequests() {
+  const { actor, isFetching } = useActor();
+  return useQuery<DepositRequest[]>({
+    queryKey: ["depositRequests"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getDepositRequests();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useGetWithdrawRequests() {
+  const { actor, isFetching } = useActor();
+  return useQuery<WithdrawRequest[]>({
+    queryKey: ["withdrawRequests"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getWithdrawRequests();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
 // ─── Mutations ────────────────────────────────────────────────────
 
 export function useRegisterPlayer() {
   const { actor } = useActor();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ username }: { username: string }) => {
+    mutationFn: async ({
+      username,
+      email,
+    }: { username: string; email: string }) => {
       if (!actor) throw new Error("Not connected");
-      return actor.registerPlayer(username);
+      return actor.registerPlayer(username, email);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["callerProfile"] });
@@ -147,7 +216,7 @@ export function useSaveCallerProfile() {
       playerId,
     }: { username: string; playerId?: number }) => {
       if (!actor) throw new Error("Not connected");
-      return actor.saveCallerUserProfile({ username, playerId });
+      return actor.saveCallerUserProfile({ username, playerId, email: "" });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["callerProfile"] });
@@ -177,19 +246,27 @@ export function useCreateMatch() {
     mutationFn: async (data: {
       title: string;
       matchType: MatchType;
+      matchSubType: MatchSubType;
+      mapName: string;
+      totalPlayers: bigint;
       entryFee: bigint;
       prizeAmount: bigint;
       scheduledAt: bigint;
       roomId: string;
+      roomPassword: string;
     }) => {
       if (!actor) throw new Error("Not connected");
       return actor.createMatch(
         data.title,
         data.matchType,
+        data.matchSubType as any,
+        data.mapName,
+        data.totalPlayers,
         data.entryFee,
         data.prizeAmount,
         data.scheduledAt,
         data.roomId,
+        data.roomPassword,
       );
     },
     onSuccess: () => {
@@ -207,10 +284,14 @@ export function useUpdateMatch() {
       matchId: number;
       title: string;
       matchType: MatchType;
+      matchSubType: MatchSubType;
+      mapName: string;
+      totalPlayers: bigint;
       entryFee: bigint;
       prizeAmount: bigint;
       scheduledAt: bigint;
       roomId: string;
+      roomPassword: string;
       status: MatchStatus;
     }) => {
       if (!actor) throw new Error("Not connected");
@@ -218,10 +299,14 @@ export function useUpdateMatch() {
         data.matchId,
         data.title,
         data.matchType,
+        data.matchSubType as any,
+        data.mapName,
+        data.totalPlayers,
         data.entryFee,
         data.prizeAmount,
         data.scheduledAt,
         data.roomId,
+        data.roomPassword,
         data.status,
       );
     },
@@ -252,10 +337,11 @@ export function useSetMatchResult() {
   return useMutation({
     mutationFn: async ({
       matchId,
-      winnerId,
-    }: { matchId: number; winnerId: number }) => {
+      winnerName,
+      resultKills,
+    }: { matchId: number; winnerName: string; resultKills: bigint }) => {
       if (!actor) throw new Error("Not connected");
-      return actor.setMatchResult(matchId, winnerId);
+      return actor.setMatchResult(matchId, winnerName, resultKills);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["matches"] });
@@ -282,6 +368,100 @@ export function useAdjustWallet() {
     onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: ["player", variables.playerId] });
       qc.invalidateQueries({ queryKey: ["walletTx", variables.playerId] });
+    },
+  });
+}
+
+export function useSubmitDepositRequest() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      amount,
+      transactionId,
+    }: { amount: bigint; transactionId: string }) => {
+      if (!actor) throw new Error("Not connected");
+      return actor.submitDepositRequest(amount, transactionId);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["playerDepositRequests"] });
+      qc.invalidateQueries({ queryKey: ["walletTx"] });
+    },
+  });
+}
+
+export function useSubmitWithdrawRequest() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      amount,
+      upiId,
+    }: { amount: bigint; upiId: string }) => {
+      if (!actor) throw new Error("Not connected");
+      return actor.submitWithdrawRequest(amount, upiId);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["playerWithdrawRequests"] });
+      qc.invalidateQueries({ queryKey: ["walletTx"] });
+    },
+  });
+}
+
+export function useApproveDepositRequest() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: RequestId) => {
+      if (!actor) throw new Error("Not connected");
+      return actor.approveDepositRequest(id);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["depositRequests"] });
+      qc.invalidateQueries({ queryKey: ["player"] });
+    },
+  });
+}
+
+export function useRejectDepositRequest() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, note }: { id: RequestId; note: string }) => {
+      if (!actor) throw new Error("Not connected");
+      return actor.rejectDepositRequest(id, note);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["depositRequests"] });
+    },
+  });
+}
+
+export function useApproveWithdrawRequest() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: RequestId) => {
+      if (!actor) throw new Error("Not connected");
+      return actor.approveWithdrawRequest(id);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["withdrawRequests"] });
+      qc.invalidateQueries({ queryKey: ["player"] });
+    },
+  });
+}
+
+export function useRejectWithdrawRequest() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, note }: { id: RequestId; note: string }) => {
+      if (!actor) throw new Error("Not connected");
+      return actor.rejectWithdrawRequest(id, note);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["withdrawRequests"] });
     },
   });
 }

@@ -45,7 +45,7 @@ export default function MatchHistoryPage({
           </h3>
           <div className="space-y-2">
             {activeMatches.map((match, i) => {
-              const isLive = match.status === MatchStatus.live;
+              const isLive = match.status === MatchStatus.ongoing;
               return (
                 <div
                   key={match.id}
@@ -108,7 +108,7 @@ export default function MatchHistoryPage({
         ) : (
           <div className="space-y-2">
             {pastMatches.map((match, idx) => {
-              const isWinner = player && match.winnerId === player.id;
+              const isWinner = player && match.winnerName === player?.username;
               return (
                 <motion.div
                   key={match.id}

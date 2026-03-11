@@ -1,10 +1,9 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { Crown, Medal, Trophy } from "lucide-react";
+import { Crown, Medal, Swords, Trophy } from "lucide-react";
 import { motion } from "motion/react";
 import type { AppNav } from "../App";
 import { useGetLeaderboard } from "../hooks/useQueries";
-import { formatAmount } from "../utils/format";
 
 interface LeaderboardPageProps {
   navigate: (nav: AppNav) => void;
@@ -73,8 +72,8 @@ export default function LeaderboardPage({
                 {leaderboard[1]?.[0] ?? "—"}
               </p>
               <p className="text-[10px] text-muted-foreground">
-                {leaderboard[1]?.[1] != null
-                  ? formatAmount(leaderboard[1][1])
+                {leaderboard[1]?.[3] != null
+                  ? `${leaderboard[1][3].toString()} wins`
                   : "—"}
               </p>
             </div>
@@ -101,8 +100,8 @@ export default function LeaderboardPage({
                 {leaderboard[0]?.[0] ?? "—"}
               </p>
               <p className="text-[10px] text-muted-foreground">
-                {leaderboard[0]?.[1] != null
-                  ? formatAmount(leaderboard[0][1])
+                {leaderboard[0]?.[3] != null
+                  ? `${leaderboard[0][3].toString()} wins`
                   : "—"}
               </p>
             </div>
@@ -128,8 +127,8 @@ export default function LeaderboardPage({
                 {leaderboard[2]?.[0] ?? "—"}
               </p>
               <p className="text-[10px] text-muted-foreground">
-                {leaderboard[2]?.[1] != null
-                  ? formatAmount(leaderboard[2][1])
+                {leaderboard[2]?.[3] != null
+                  ? `${leaderboard[2][3].toString()} wins`
                   : "—"}
               </p>
             </div>
@@ -162,53 +161,89 @@ export default function LeaderboardPage({
         </div>
       ) : (
         <div className="space-y-2">
-          {leaderboard.map(([username, earnings], idx) => {
-            const rank = idx + 1;
-            const isTop3 = rank <= 3;
-            return (
-              <motion.div
-                key={username}
-                initial={{ opacity: 0, x: -12 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: idx * 0.04 }}
-                className={cn(
-                  "flex items-center gap-3 p-3 rounded-xl border",
-                  isTop3 ? rankBg[rank] : "bg-card border-border",
-                )}
-                data-ocid={`leaderboard.item.${rank}`}
-              >
-                <div className="w-8 flex items-center justify-center">
-                  <RankIcon rank={rank} />
-                </div>
-                <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                  <span
-                    className={cn(
-                      "font-heading font-black text-sm",
-                      rankColors[rank] ?? "text-muted-foreground",
-                    )}
-                  >
-                    {username[0]?.toUpperCase() ?? "?"}
-                  </span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p
-                    className={cn(
-                      "font-heading font-bold text-sm truncate",
-                      rankColors[rank] ?? "text-foreground",
-                    )}
-                  >
-                    {username}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="font-mono font-bold text-sm text-accent">
-                    {earnings != null ? formatAmount(earnings) : "₹0"}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground">earnings</p>
-                </div>
-              </motion.div>
-            );
-          })}
+          {/* Column headers */}
+          <div className="flex items-center gap-3 px-3 pb-1">
+            <div className="w-8" />
+            <div className="w-9" />
+            <div className="flex-1">
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                Player
+              </span>
+            </div>
+            <div className="flex gap-3 text-right">
+              <div className="w-10 text-[10px] text-muted-foreground uppercase tracking-wide">
+                Played
+              </div>
+              <div className="w-8 text-[10px] text-muted-foreground uppercase tracking-wide">
+                Kills
+              </div>
+              <div className="w-8 text-[10px] text-muted-foreground uppercase tracking-wide">
+                Wins
+              </div>
+            </div>
+          </div>
+
+          {leaderboard.map(
+            ([username, matchesPlayed, totalKills, wins], idx) => {
+              const rank = idx + 1;
+              const isTop3 = rank <= 3;
+              return (
+                <motion.div
+                  key={username}
+                  initial={{ opacity: 0, x: -12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: idx * 0.04 }}
+                  className={cn(
+                    "flex items-center gap-3 p-3 rounded-xl border",
+                    isTop3 ? rankBg[rank] : "bg-card border-border",
+                  )}
+                  data-ocid={`leaderboard.item.${rank}`}
+                >
+                  <div className="w-8 flex items-center justify-center">
+                    <RankIcon rank={rank} />
+                  </div>
+                  <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                    <span
+                      className={cn(
+                        "font-heading font-black text-sm",
+                        rankColors[rank] ?? "text-muted-foreground",
+                      )}
+                    >
+                      {username[0]?.toUpperCase() ?? "?"}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p
+                      className={cn(
+                        "font-heading font-bold text-sm truncate",
+                        rankColors[rank] ?? "text-foreground",
+                      )}
+                    >
+                      {username}
+                    </p>
+                  </div>
+                  <div className="flex gap-3 text-right">
+                    <div className="w-10">
+                      <p className="font-mono font-bold text-sm text-foreground">
+                        {matchesPlayed.toString()}
+                      </p>
+                    </div>
+                    <div className="w-8">
+                      <p className="font-mono font-bold text-sm text-red-400 flex items-center justify-end gap-0.5">
+                        <Swords className="h-3 w-3" />
+                        {totalKills.toString()}
+                      </p>
+                    </div>
+                    <div className="w-8">
+                      <p className="font-mono font-bold text-sm text-accent">
+                        {wins.toString()}
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            },
+          )}
         </div>
       )}
     </div>

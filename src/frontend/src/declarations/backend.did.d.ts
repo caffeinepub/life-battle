@@ -10,35 +10,63 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
+export interface DepositRequest {
+  'id' : RequestId,
+  'status' : { 'pending' : null } |
+    { 'approved' : null } |
+    { 'rejected' : null },
+  'playerId' : PlayerId,
+  'adminNote' : string,
+  'timestamp' : Time,
+  'amount' : bigint,
+  'transactionId' : string,
+}
 export interface Match {
   'id' : MatchId,
   'playerIds' : Uint32Array,
   'matchType' : MatchType,
   'status' : MatchStatus,
   'title' : string,
-  'winnerId' : [] | [PlayerId],
+  'mapName' : string,
+  'totalPlayers' : bigint,
   'prizeAmount' : bigint,
+  'roomPassword' : string,
+  'resultKills' : bigint,
+  'winnerName' : string,
+  'matchSubType' : MatchSubType,
   'entryFee' : bigint,
   'roomId' : string,
   'scheduledAt' : Time,
 }
 export type MatchId = number;
 export type MatchStatus = { 'upcoming' : null } |
-  { 'live' : null } |
-  { 'completed' : null };
+  { 'completed' : null } |
+  { 'ongoing' : null };
+export type MatchSubType = { 'lossToWin' : null } |
+  { 'lonewolf1v1' : null } |
+  { 'lonewolf2v2' : null } |
+  { 'cs1v1' : null } |
+  { 'cs2v2' : null } |
+  { 'cs4v4' : null } |
+  { 'perKill' : null } |
+  { 'survival' : null };
 export type MatchType = { 'free' : null } |
   { 'paid' : null };
 export interface Player {
   'id' : PlayerId,
   'referralCode' : string,
   'username' : string,
+  'winningBalance' : bigint,
   'wins' : bigint,
+  'email' : string,
   'referredBy' : [] | [string],
   'totalEarnings' : bigint,
   'matchesPlayed' : bigint,
+  'totalKills' : bigint,
   'walletBalance' : bigint,
 }
 export type PlayerId = number;
+export type RequestId = number;
 export type Time = bigint;
 export type TxId = number;
 export type TxType = { 'credit' : null } |
@@ -46,6 +74,7 @@ export type TxType = { 'credit' : null } |
 export interface UserProfile {
   'username' : string,
   'playerId' : [] | [PlayerId],
+  'email' : string,
 }
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
@@ -58,31 +87,77 @@ export interface WalletTransaction {
   'txType' : TxType,
   'amount' : bigint,
 }
+export interface WithdrawRequest {
+  'id' : RequestId,
+  'status' : { 'pending' : null } |
+    { 'approved' : null } |
+    { 'rejected' : null },
+  'playerId' : PlayerId,
+  'adminNote' : string,
+  'timestamp' : Time,
+  'upiId' : string,
+  'amount' : bigint,
+}
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'adjustPlayerWallet' : ActorMethod<[PlayerId, bigint, string], undefined>,
+  'approveDepositRequest' : ActorMethod<[RequestId], undefined>,
+  'approveWithdrawRequest' : ActorMethod<[RequestId], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'createMatch' : ActorMethod<
-    [string, MatchType, bigint, bigint, Time, string],
+    [
+      string,
+      MatchType,
+      MatchSubType,
+      string,
+      bigint,
+      bigint,
+      bigint,
+      Time,
+      string,
+      string,
+    ],
     MatchId
   >,
   'deleteMatch' : ActorMethod<[MatchId], undefined>,
   'getAdminDashboard' : ActorMethod<[], [bigint, bigint, bigint]>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
-  'getLeaderboard' : ActorMethod<[], Array<[string, [] | [bigint]]>>,
+  'getDepositRequests' : ActorMethod<[], Array<DepositRequest>>,
+  'getLeaderboard' : ActorMethod<[], Array<[string, bigint, bigint, bigint]>>,
+  'getMatchRoomDetails' : ActorMethod<[MatchId], [] | [[string, string]]>,
   'getMatches' : ActorMethod<[], Array<Match>>,
+  'getPlayerDepositRequests' : ActorMethod<[], Array<DepositRequest>>,
   'getPlayerDetails' : ActorMethod<[PlayerId], Player>,
   'getPlayerMatches' : ActorMethod<[PlayerId], Array<Match>>,
+  'getPlayerWithdrawRequests' : ActorMethod<[], Array<WithdrawRequest>>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'getWalletTransactions' : ActorMethod<[PlayerId], Array<WalletTransaction>>,
+  'getWithdrawRequests' : ActorMethod<[], Array<WithdrawRequest>>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'joinMatch' : ActorMethod<[MatchId], undefined>,
-  'registerPlayer' : ActorMethod<[string], PlayerId>,
+  'registerPlayer' : ActorMethod<[string, string], PlayerId>,
+  'rejectDepositRequest' : ActorMethod<[RequestId, string], undefined>,
+  'rejectWithdrawRequest' : ActorMethod<[RequestId, string], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
-  'setMatchResult' : ActorMethod<[MatchId, PlayerId], undefined>,
+  'setMatchResult' : ActorMethod<[MatchId, string, bigint], undefined>,
+  'submitDepositRequest' : ActorMethod<[bigint, string], RequestId>,
+  'submitWithdrawRequest' : ActorMethod<[bigint, string], RequestId>,
   'updateMatch' : ActorMethod<
-    [MatchId, string, MatchType, bigint, bigint, Time, string, MatchStatus],
+    [
+      MatchId,
+      string,
+      MatchType,
+      MatchSubType,
+      string,
+      bigint,
+      bigint,
+      bigint,
+      Time,
+      string,
+      string,
+      MatchStatus,
+    ],
     undefined
   >,
 }

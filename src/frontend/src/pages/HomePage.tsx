@@ -26,8 +26,8 @@ export default function HomePage({ navigate, playerId }: HomePageProps) {
       (m) =>
         m.matchType === MatchType.paid && m.status === MatchStatus.upcoming,
     ).length ?? 0;
-  const liveMatches =
-    matches?.filter((m) => m.status === MatchStatus.live) ?? [];
+  const ongoingMatches =
+    matches?.filter((m) => m.status === MatchStatus.ongoing) ?? [];
 
   return (
     <div className="p-4 space-y-5">
@@ -77,8 +77,8 @@ export default function HomePage({ navigate, playerId }: HomePageProps) {
         <div className="absolute -right-4 -top-4 w-24 h-24 rounded-full bg-primary/10 blur-2xl" />
       </motion.div>
 
-      {/* Live matches alert */}
-      {liveMatches.length > 0 && (
+      {/* Ongoing matches alert */}
+      {ongoingMatches.length > 0 && (
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -89,8 +89,8 @@ export default function HomePage({ navigate, playerId }: HomePageProps) {
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
             <span className="text-green-400 font-heading font-bold text-sm">
-              {liveMatches.length} Match{liveMatches.length > 1 ? "es" : ""}{" "}
-              LIVE NOW
+              {ongoingMatches.length} Match
+              {ongoingMatches.length > 1 ? "es" : ""} ONGOING NOW
             </span>
           </div>
           <ChevronRight className="h-4 w-4 text-green-400" />

@@ -1,4 +1,4 @@
-import { MatchStatus } from "../backend.d";
+import { MatchStatus, MatchSubType } from "../backend.d";
 
 /**
  * Format bigint amount (in paise/cents) to ₹ display
@@ -27,14 +27,37 @@ export function formatDate(time: bigint): string {
 
 export function getStatusLabel(status: MatchStatus): string {
   switch (status) {
-    case MatchStatus.live:
-      return "🔴 LIVE";
+    case MatchStatus.ongoing:
+      return "🔴 ONGOING";
     case MatchStatus.upcoming:
       return "⏳ UPCOMING";
     case MatchStatus.completed:
       return "✅ COMPLETED";
     default:
       return status;
+  }
+}
+
+export function getSubTypeLabel(subType: MatchSubType): string {
+  switch (subType) {
+    case MatchSubType.survival:
+      return "Survival";
+    case MatchSubType.perKill:
+      return "Per Kill";
+    case MatchSubType.lossToWin:
+      return "Loss to Win";
+    case MatchSubType.lonewolf1v1:
+      return "Lonewolf 1v1";
+    case MatchSubType.lonewolf2v2:
+      return "Lonewolf 2v2";
+    case MatchSubType.cs1v1:
+      return "CS 1v1";
+    case MatchSubType.cs2v2:
+      return "CS 2v2";
+    case MatchSubType.cs4v4:
+      return "CS 4v4";
+    default:
+      return subType;
   }
 }
 
