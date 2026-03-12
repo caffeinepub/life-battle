@@ -92,11 +92,26 @@ export function useGetWalletTransactions(playerId: number | undefined) {
 
 export function useGetLeaderboard() {
   const { actor, isFetching } = useActor();
-  return useQuery<Array<[string, bigint, bigint, bigint]>>({
+  // Returns [playerId, username, matchesPlayed, totalKills, wins]
+  return useQuery<Array<[number, string, bigint, bigint, bigint]>>({
     queryKey: ["leaderboard"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getLeaderboard();
+      return actor.getLeaderboard() as unknown as Promise<
+        Array<[number, string, bigint, bigint, bigint]>
+      >;
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useGetAllPlayers() {
+  const { actor, isFetching } = useActor();
+  return useQuery<Player[]>({
+    queryKey: ["allPlayers"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return (actor as any).getAllPlayers();
     },
     enabled: !!actor && !isFetching,
   });
@@ -214,9 +229,14 @@ export function useSaveCallerProfile() {
     mutationFn: async ({
       username,
       playerId,
-    }: { username: string; playerId?: number }) => {
+      email,
+    }: { username: string; playerId?: number; email?: string }) => {
       if (!actor) throw new Error("Not connected");
-      return actor.saveCallerUserProfile({ username, playerId, email: "" });
+      return actor.saveCallerUserProfile({
+        username,
+        playerId,
+        email: email ?? "",
+      });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["callerProfile"] });

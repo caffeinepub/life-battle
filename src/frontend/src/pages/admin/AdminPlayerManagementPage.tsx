@@ -1,3 +1,4 @@
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,10 +18,11 @@ import { toast } from "sonner";
 import type { AppNav } from "../../App";
 import {
   useAdjustWallet,
-  useGetLeaderboard,
+  useGetAllPlayers,
   useGetPlayerDetails,
 } from "../../hooks/useQueries";
 import { formatAmount } from "../../utils/format";
+import { formatPlayerId } from "../../utils/playerId";
 
 interface AdminPlayerManagementPageProps {
   navigate: (nav: AppNav) => void;
@@ -36,16 +38,20 @@ export default function AdminPlayerManagementPage({
   const [adjustType, setAdjustType] = useState<"add" | "deduct">("add");
   const [walletDialogOpen, setWalletDialogOpen] = useState(false);
 
-  const { data: leaderboard, isLoading } = useGetLeaderboard();
+  const { data: players, isLoading } = useGetAllPlayers();
   const { data: selectedPlayer } = useGetPlayerDetails(
     selectedPlayerId ?? undefined,
   );
   const adjustWallet = useAdjustWallet();
 
-  const filteredPlayers = (leaderboard ?? []).filter(
-    ([username]) =>
-      search === "" || username.toLowerCase().includes(search.toLowerCase()),
-  );
+  const filteredPlayers = (players ?? []).filter((p) => {
+    if (search === "") return true;
+    const q = search.toLowerCase();
+    return (
+      p.username.toLowerCase().includes(q) ||
+      formatPlayerId(p.id).toLowerCase().includes(q)
+    );
+  });
 
   const handleAdjust = async () => {
     if (!selectedPlayerId || !adjustAmount) {
@@ -90,7 +96,7 @@ export default function AdminPlayerManagementPage({
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search players..."
+          placeholder="Search by username or Player ID (e.g. LB1001)..."
           className="pl-9 bg-card border-border"
           data-ocid="admin.players.search_input"
         />
@@ -116,9 +122,9 @@ export default function AdminPlayerManagementPage({
         </div>
       ) : (
         <div className="space-y-2">
-          {filteredPlayers.map(([username, earnings], idx) => (
+          {filteredPlayers.map((player, idx) => (
             <motion.div
-              key={username}
+              key={player.id}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: idx * 0.04 }}
@@ -127,15 +133,21 @@ export default function AdminPlayerManagementPage({
             >
               <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
                 <span className="font-heading font-black text-sm text-muted-foreground">
-                  {username[0]?.toUpperCase() ?? "?"}
+                  {player.username[0]?.toUpperCase() ?? "?"}
                 </span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-heading font-bold text-sm text-foreground truncate">
-                  {username}
-                </p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="font-heading font-bold text-sm text-foreground truncate">
+                    {player.username}
+                  </p>
+                  <Badge className="bg-primary/20 text-primary border-primary/40 font-mono text-[10px] px-1.5 py-0">
+                    {formatPlayerId(player.id)}
+                  </Badge>
+                </div>
                 <p className="text-xs text-muted-foreground font-mono">
-                  Earnings: {earnings != null ? formatAmount(earnings) : "₹0"}
+                  Balance: {formatAmount(player.walletBalance ?? 0n)} · Matches:{" "}
+                  {player.matchesPlayed?.toString() ?? "0"}
                 </p>
               </div>
               <Button
@@ -143,8 +155,7 @@ export default function AdminPlayerManagementPage({
                 variant="outline"
                 className="border-primary/30 text-primary text-xs"
                 onClick={() => {
-                  // Find player ID from leaderboard index (approximate)
-                  setSelectedPlayerId(idx + 1);
+                  setSelectedPlayerId(player.id);
                   setWalletDialogOpen(true);
                 }}
                 data-ocid={`admin.player.edit_button.${idx + 1}`}

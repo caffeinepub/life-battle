@@ -25,7 +25,6 @@ import AdminPlayerManagementPage from "./pages/admin/AdminPlayerManagementPage";
 import AppHeader from "./components/AppHeader";
 // Layout
 import BottomNav from "./components/BottomNav";
-import SplashScreen from "./components/SplashScreen";
 
 export type PlayerPage =
   | "home"
@@ -56,7 +55,6 @@ export default function App() {
   const { identity, isInitializing } = useInternetIdentity();
   const [nav, setNav] = useState<AppNav>({ page: "home" });
   const [isAdminMode, setIsAdminMode] = useState(false);
-  const [splashDone, setSplashDone] = useState(false);
   const queryClient = useQueryClient();
 
   const isLoggedIn = !!identity && !identity.getPrincipal().isAnonymous();
@@ -65,11 +63,6 @@ export default function App() {
   const { data: profile, isLoading: profileLoading } = useGetCallerProfile();
 
   const navigate = (navState: AppNav) => setNav(navState);
-
-  // Always show splash on first load
-  if (!splashDone) {
-    return <SplashScreen onComplete={() => setSplashDone(true)} />;
-  }
 
   // Show spinner only during Internet Identity initialization
   if (isInitializing) {

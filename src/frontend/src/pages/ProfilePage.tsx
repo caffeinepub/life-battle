@@ -32,6 +32,7 @@ import type { AppNav } from "../App";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import { useGetPlayerDetails, useSaveCallerProfile } from "../hooks/useQueries";
 import { formatAmount } from "../utils/format";
+import { formatPlayerId } from "../utils/playerId";
 
 interface ProfilePageProps {
   navigate: (nav: AppNav) => void;
@@ -265,6 +266,14 @@ export default function ProfilePage({ navigate, playerId }: ProfilePageProps) {
                 </Badge>
               )}
             </div>
+            {/* Player ID badge */}
+            {playerId !== undefined && (
+              <div className="mt-1">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-primary/20 border border-primary/40 text-primary font-mono font-bold text-xs tracking-wider">
+                  {formatPlayerId(playerId)}
+                </span>
+              </div>
+            )}
             {bio && (
               <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
                 {bio}

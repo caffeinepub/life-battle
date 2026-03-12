@@ -4,6 +4,7 @@ import { Crown, Medal, Swords, Trophy } from "lucide-react";
 import { motion } from "motion/react";
 import type { AppNav } from "../App";
 import { useGetLeaderboard } from "../hooks/useQueries";
+import { formatPlayerId } from "../utils/playerId";
 
 interface LeaderboardPageProps {
   navigate: (nav: AppNav) => void;
@@ -64,16 +65,16 @@ export default function LeaderboardPage({
           >
             <div className="w-12 h-12 rounded-full bg-slate-300/20 border-2 border-slate-300/50 flex items-center justify-center mx-auto mb-2">
               <span className="font-heading font-black text-base text-slate-300">
-                {leaderboard[1]?.[0]?.[0]?.toUpperCase() ?? "?"}
+                {leaderboard[1]?.[1]?.[0]?.toUpperCase() ?? "?"}
               </span>
             </div>
             <div className="bg-slate-300/10 border border-slate-300/30 rounded-t-xl p-2 h-16 flex flex-col justify-end">
               <p className="text-xs font-mono font-bold text-slate-300 truncate">
-                {leaderboard[1]?.[0] ?? "—"}
+                {leaderboard[1]?.[1] ?? "—"}
               </p>
-              <p className="text-[10px] text-muted-foreground">
-                {leaderboard[1]?.[3] != null
-                  ? `${leaderboard[1][3].toString()} wins`
+              <p className="text-[10px] text-primary/80 font-mono">
+                {leaderboard[1]?.[0] != null
+                  ? formatPlayerId(leaderboard[1][0])
                   : "—"}
               </p>
             </div>
@@ -92,16 +93,16 @@ export default function LeaderboardPage({
             <Crown className="h-5 w-5 text-yellow-400 mx-auto mb-1" />
             <div className="w-14 h-14 rounded-full bg-yellow-400/20 border-2 border-yellow-400/60 flex items-center justify-center mx-auto mb-2 glow-orange">
               <span className="font-heading font-black text-lg text-yellow-400">
-                {leaderboard[0]?.[0]?.[0]?.toUpperCase() ?? "?"}
+                {leaderboard[0]?.[1]?.[0]?.toUpperCase() ?? "?"}
               </span>
             </div>
             <div className="bg-yellow-400/10 border border-yellow-400/30 rounded-t-xl p-2 h-24 flex flex-col justify-end">
               <p className="text-xs font-mono font-bold text-yellow-400 truncate">
-                {leaderboard[0]?.[0] ?? "—"}
+                {leaderboard[0]?.[1] ?? "—"}
               </p>
-              <p className="text-[10px] text-muted-foreground">
-                {leaderboard[0]?.[3] != null
-                  ? `${leaderboard[0][3].toString()} wins`
+              <p className="text-[10px] text-primary/80 font-mono">
+                {leaderboard[0]?.[0] != null
+                  ? formatPlayerId(leaderboard[0][0])
                   : "—"}
               </p>
             </div>
@@ -119,16 +120,16 @@ export default function LeaderboardPage({
           >
             <div className="w-12 h-12 rounded-full bg-amber-600/20 border-2 border-amber-600/50 flex items-center justify-center mx-auto mb-2">
               <span className="font-heading font-black text-base text-amber-600">
-                {leaderboard[2]?.[0]?.[0]?.toUpperCase() ?? "?"}
+                {leaderboard[2]?.[1]?.[0]?.toUpperCase() ?? "?"}
               </span>
             </div>
             <div className="bg-amber-600/10 border border-amber-600/30 rounded-t-xl p-2 h-12 flex flex-col justify-end">
               <p className="text-xs font-mono font-bold text-amber-600 truncate">
-                {leaderboard[2]?.[0] ?? "—"}
+                {leaderboard[2]?.[1] ?? "—"}
               </p>
-              <p className="text-[10px] text-muted-foreground">
-                {leaderboard[2]?.[3] != null
-                  ? `${leaderboard[2][3].toString()} wins`
+              <p className="text-[10px] text-primary/80 font-mono">
+                {leaderboard[2]?.[0] != null
+                  ? formatPlayerId(leaderboard[2][0])
                   : "—"}
               </p>
             </div>
@@ -184,12 +185,12 @@ export default function LeaderboardPage({
           </div>
 
           {leaderboard.map(
-            ([username, matchesPlayed, totalKills, wins], idx) => {
+            ([playerId, username, matchesPlayed, totalKills, wins], idx) => {
               const rank = idx + 1;
               const isTop3 = rank <= 3;
               return (
                 <motion.div
-                  key={username}
+                  key={`${playerId}-${username}`}
                   initial={{ opacity: 0, x: -12 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: idx * 0.04 }}
@@ -220,6 +221,9 @@ export default function LeaderboardPage({
                       )}
                     >
                       {username}
+                    </p>
+                    <p className="text-[10px] font-mono text-primary/70">
+                      {formatPlayerId(playerId)}
                     </p>
                   </div>
                   <div className="flex gap-3 text-right">

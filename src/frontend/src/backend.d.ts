@@ -114,10 +114,11 @@ export interface backendInterface {
     createMatch(title: string, matchType: MatchType, matchSubType: MatchSubType, mapName: string, totalPlayers: bigint, entryFee: bigint, prizeAmount: bigint, scheduledAt: Time, roomId: string, roomPassword: string): Promise<MatchId>;
     deleteMatch(matchId: MatchId): Promise<void>;
     getAdminDashboard(): Promise<[bigint, bigint, bigint]>;
+    getAllPlayers(): Promise<Array<Player>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getDepositRequests(): Promise<Array<DepositRequest>>;
-    getLeaderboard(): Promise<Array<[string, bigint, bigint, bigint]>>;
+    getLeaderboard(): Promise<Array<[PlayerId, string, bigint, bigint, bigint]>>;
     getMatchRoomDetails(matchId: MatchId): Promise<[string, string] | null>;
     getMatches(): Promise<Array<Match>>;
     getPlayerDepositRequests(): Promise<Array<DepositRequest>>;

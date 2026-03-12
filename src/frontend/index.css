@@ -94,6 +94,9 @@
     font-family: "Outfit", sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    overscroll-behavior: none;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -176,5 +179,18 @@
   }
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
+  }
+
+  /* Native app feel — disable text selection and tap highlight on interactive elements */
+  .native-tap {
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* Bottom nav active pill */
+  .nav-active-pill {
+    background: oklch(0.7 0.19 42 / 0.15);
+    border-radius: 1rem;
   }
 }

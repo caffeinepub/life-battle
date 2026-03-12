@@ -5,6 +5,8 @@ import {
   AlertTriangle,
   Chrome,
   ExternalLink,
+  Eye,
+  EyeOff,
   Shield,
   Trophy,
   Users,
@@ -30,6 +32,10 @@ export default function LoginPage({ isRegistration }: LoginPageProps) {
   const { login, isLoggingIn, isLoginError } = useInternetIdentity();
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const registerPlayer = useRegisterPlayer();
@@ -38,6 +44,10 @@ export default function LoginPage({ isRegistration }: LoginPageProps) {
   const handleRegister = async () => {
     if (!username.trim()) {
       toast.error("Please enter a username");
+      return;
+    }
+    if (password && password !== confirmPassword) {
+      toast.error("Passwords do not match");
       return;
     }
     setIsSubmitting(true);
@@ -198,6 +208,78 @@ export default function LoginPage({ isRegistration }: LoginPageProps) {
                     data-ocid="register.email.input"
                   />
                 </div>
+                <div>
+                  <Label
+                    htmlFor="password"
+                    className="text-xs text-muted-foreground uppercase tracking-wide mb-1 block"
+                  >
+                    Password
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Create a password"
+                      className="bg-background border-border font-mono pr-10"
+                      data-ocid="register.password.input"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                      data-ocid="register.password.toggle"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <Label
+                    htmlFor="confirmPassword"
+                    className="text-xs text-muted-foreground uppercase tracking-wide mb-1 block"
+                  >
+                    Confirm Password
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? "text" : "password"}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Repeat your password"
+                      className="bg-background border-border font-mono pr-10"
+                      data-ocid="register.confirm_password.input"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                      data-ocid="register.confirm_password.toggle"
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                  {password &&
+                    confirmPassword &&
+                    password !== confirmPassword && (
+                      <p
+                        className="text-xs text-destructive mt-1"
+                        data-ocid="register.password.error_state"
+                      >
+                        Passwords do not match
+                      </p>
+                    )}
+                </div>
                 <Button
                   onClick={handleRegister}
                   disabled={isSubmitting}
@@ -233,7 +315,7 @@ export default function LoginPage({ isRegistration }: LoginPageProps) {
               ) : (
                 <span className="flex items-center gap-2">
                   <Shield className="h-5 w-5" />
-                  Login / Sign Up
+                  Sign In
                 </span>
               )}
             </Button>

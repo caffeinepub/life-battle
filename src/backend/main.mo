@@ -124,26 +124,6 @@ actor {
     adminNote : Text;
   };
 
-  module LeaderboardEntryCompare {
-    public func compare(a : (Text, (Nat, Nat, Nat)), b : (Text, (Nat, Nat, Nat))) : Order.Order {
-      func compareValues(x : Nat, y : Nat, namesSwapped : Bool) : Order.Order {
-        switch (Nat.compare(x, y)) {
-          case (#less) { if (namesSwapped) { #greater } else { #less } };
-          case (#greater) { if (namesSwapped) { #less } else { #greater } };
-          case (#equal) { #equal };
-        };
-      };
-
-      switch (compareValues(a.1.2, b.1.2, false)) { // Sort primarily by wins
-        case (#equal) {
-          // If wins are equal, sort by kills
-          compareValues(a.1.1, b.1.1, false);
-        };
-        case (order) { order };
-      };
-    };
-  };
-
   // State
   let players = Map.empty<PlayerId, Player>();
   let matches = Map.empty<MatchId, Match>();
@@ -213,7 +193,6 @@ actor {
     // Check if username/email is already taken
     let filteredPlayers = players.filter(
       func(_id, p) {
-        // Must match either username or email
         p.username == username or p.email == email;
       }
     );
@@ -224,7 +203,7 @@ actor {
 
     // Check if caller already has a player account
     switch (principalToPlayerId.get(caller)) {
-      case (?existingId) {
+      case (?_existingId) {
         Runtime.trap("Player already registered for this principal");
       };
       case (null) {};
@@ -308,26 +287,23 @@ actor {
     matches.add(matchId, match);
   };
 
-  public query func getLeaderboard() : async [(Text, Nat, Nat, Nat)] {
-    // Public endpoint - no authorization required
-    players.toArray().map<(PlayerId, Player), (Text, Nat, Nat, Nat)>(
+  // Returns (playerId, username, matchesPlayed, totalKills, wins)
+  public query func getLeaderboard() : async [(PlayerId, Text, Nat, Nat, Nat)] {
+    players.toArray().map<(PlayerId, Player), (PlayerId, Text, Nat, Nat, Nat)>(
       func((_, p)) {
-        (p.username, p.matchesPlayed, p.totalKills, p.wins);
+        (p.id, p.username, p.matchesPlayed, p.totalKills, p.wins);
       }
     );
   };
 
   public query ({ caller }) func getPlayerMatches(playerId : PlayerId) : async [Match] {
-    // Allow users to view their own matches, admins can view any
     switch (getPlayerIdForCaller(caller)) {
       case (?callerPlayerId) {
-        // Caller is a registered player (must be a user)
         if (callerPlayerId != playerId and not AccessControl.isAdmin(accessControlState, caller)) {
           Runtime.trap("Unauthorized: Can only view your own matches");
         };
       };
       case (null) {
-        // Caller is not a registered player - only admin can proceed
         if (not AccessControl.isAdmin(accessControlState, caller)) {
           Runtime.trap("Unauthorized: Can only view your own matches");
         };
@@ -340,16 +316,13 @@ actor {
   };
 
   public query ({ caller }) func getWalletTransactions(playerId : PlayerId) : async [WalletTransaction] {
-    // Allow users to view their own transactions, admins can view any
     switch (getPlayerIdForCaller(caller)) {
       case (?callerPlayerId) {
-        // Caller is a registered player (must be a user)
         if (callerPlayerId != playerId and not AccessControl.isAdmin(accessControlState, caller)) {
           Runtime.trap("Unauthorized: Can only view your own wallet transactions");
         };
       };
       case (null) {
-        // Caller is not a registered player - only admin can proceed
         if (not AccessControl.isAdmin(accessControlState, caller)) {
           Runtime.trap("Unauthorized: Can only view your own wallet transactions");
         };
@@ -362,16 +335,13 @@ actor {
   };
 
   public query ({ caller }) func getPlayerDetails(playerId : PlayerId) : async Player {
-    // Allow users to view their own details, admins can view any
     switch (getPlayerIdForCaller(caller)) {
       case (?callerPlayerId) {
-        // Caller is a registered player (must be a user)
         if (callerPlayerId != playerId and not AccessControl.isAdmin(accessControlState, caller)) {
           Runtime.trap("Unauthorized: Can only view your own player details");
         };
       };
       case (null) {
-        // Caller is not a registered player - only admin can proceed
         if (not AccessControl.isAdmin(accessControlState, caller)) {
           Runtime.trap("Unauthorized: Can only view your own player details");
         };
@@ -381,8 +351,15 @@ actor {
     getPlayer(playerId);
   };
 
+  // Returns all registered players (admin only)
+  public query ({ caller }) func getAllPlayers() : async [Player] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can view all players");
+    };
+    players.values().toArray();
+  };
+
   public query func getMatches() : async [Match] {
-    // Public endpoint - no authorization required
     matches.values().toArray();
   };
 
@@ -406,7 +383,7 @@ actor {
     };
   };
 
-  // Admin Functionality (Match & Wallet Admin Control)
+  // Admin Functionality
   public shared ({ caller }) func createMatch(
     title : Text,
     matchType : MatchType,
@@ -495,7 +472,6 @@ actor {
 
     let match = getMatch(matchId);
 
-    // Find the player by username (winnerName)
     var playerOpt : ?Player = null;
     for ((_, player) in players.entries()) {
       if (player.username == winnerName) {
@@ -505,10 +481,9 @@ actor {
 
     switch (playerOpt) {
       case (null) {
-        Runtime.trap("Winner not found in players. Entry will be saved as admin or permanent staff win.");
+        Runtime.trap("Winner not found in players.");
       };
       case (?player) {
-        // Credit prize amount to player's winning balance
         let updatedPlayer = {
           player with
           winningBalance = player.winningBalance + match.prizeAmount;
@@ -516,7 +491,6 @@ actor {
         };
         players.add(player.id, updatedPlayer);
 
-        // Record transaction
         let txId = nextTxId;
         nextTxId += 1;
         let tx : WalletTransaction = {
@@ -545,7 +519,6 @@ actor {
     if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
       Runtime.trap("Unauthorized: Only admins can delete matches");
     };
-
     matches.remove(matchId);
   };
 
@@ -566,7 +539,6 @@ actor {
     player := { player with walletBalance = newBalance };
     players.add(playerId, player);
 
-    // Record transaction
     let txId = nextTxId;
     nextTxId += 1;
     let tx : WalletTransaction = {
@@ -697,12 +669,9 @@ actor {
     };
 
     var player = getPlayer(request.playerId);
-
-    // Update player wallet
     player := { player with walletBalance = player.walletBalance + request.amount };
     players.add(player.id, player);
 
-    // Record transaction
     let txId = nextTxId;
     nextTxId += 1;
     let tx : WalletTransaction = {
@@ -733,11 +702,7 @@ actor {
       Runtime.trap("Deposit request already processed");
     };
 
-    let updatedRequest = {
-      request with
-      status = #rejected;
-      adminNote = note;
-    };
+    let updatedRequest = { request with status = #rejected; adminNote = note };
     depositRequests.add(id, updatedRequest);
   };
 
@@ -794,11 +759,7 @@ actor {
       Runtime.trap("Withdraw request already processed");
     };
 
-    let updatedRequest = {
-      request with
-      status = #rejected;
-      adminNote = note;
-    };
+    let updatedRequest = { request with status = #rejected; adminNote = note };
     withdrawRequests.add(id, updatedRequest);
   };
 
