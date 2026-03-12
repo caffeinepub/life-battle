@@ -1,12 +1,25 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Shield, Trophy, Users, Zap } from "lucide-react";
+import {
+  AlertTriangle,
+  Chrome,
+  ExternalLink,
+  Shield,
+  Trophy,
+  Users,
+  Zap,
+} from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import { useRegisterPlayer } from "../hooks/useQueries";
+import {
+  isInWebView,
+  openInChrome,
+  openInSystemBrowser,
+} from "../utils/webViewDetect";
 
 interface LoginPageProps {
   onLoginSuccess: () => void;
@@ -20,6 +33,7 @@ export default function LoginPage({ isRegistration }: LoginPageProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const registerPlayer = useRegisterPlayer();
+  const webView = isInWebView();
 
   const handleRegister = async () => {
     if (!username.trim()) {
@@ -98,6 +112,46 @@ export default function LoginPage({ isRegistration }: LoginPageProps) {
             </div>
           ))}
         </div>
+
+        {/* WebView Warning Banner */}
+        {webView && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="mb-4 p-4 rounded-xl border border-yellow-500/40 bg-yellow-500/10 space-y-3"
+          >
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-yellow-300 font-heading font-bold text-sm">
+                  Login requires Chrome browser
+                </p>
+                <p className="text-yellow-400/80 text-xs mt-1 font-body leading-relaxed">
+                  Google blocks login inside in-app browsers (Error 403). Tap
+                  below to open in Chrome and sign in securely.
+                </p>
+              </div>
+            </div>
+            <Button
+              onClick={openInChrome}
+              className="w-full h-10 font-heading font-bold text-sm bg-yellow-500 hover:bg-yellow-400 text-black border-0"
+              data-ocid="login.open_chrome_button"
+            >
+              <Chrome className="h-4 w-4 mr-2" />
+              Open in Chrome
+            </Button>
+            <Button
+              onClick={openInSystemBrowser}
+              variant="outline"
+              className="w-full h-9 font-heading font-bold text-xs border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/10"
+              data-ocid="login.open_browser_button"
+            >
+              <ExternalLink className="h-4 w-4 mr-2" />
+              Open in Default Browser
+            </Button>
+          </motion.div>
+        )}
 
         {isRegistration ? (
           /* Registration form */
@@ -183,6 +237,12 @@ export default function LoginPage({ isRegistration }: LoginPageProps) {
                 </span>
               )}
             </Button>
+
+            {webView && (
+              <p className="text-center text-xs text-yellow-400/70 font-body">
+                ⚠️ This may fail inside the in-app browser. Use Chrome above.
+              </p>
+            )}
 
             {isLoginError && (
               <p
