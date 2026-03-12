@@ -44,6 +44,8 @@ const DEPOSIT_AMOUNTS = [10, 50, 100, 200, 500];
 const UPI_ID = "6280048307@fam";
 const QR_IMAGE = "/assets/uploads/file_00000000efd071fa89ce6e365bcb68fe-1.png";
 const TIMER_SECONDS = 3 * 60; // 3 minutes
+const WITHDRAW_MIN = 50;
+const WITHDRAW_MAX = 500;
 
 function StatusBadge({
   status,
@@ -207,8 +209,12 @@ export default function WalletPage({
       toast.error("Please enter your UPI ID");
       return;
     }
-    if (!amt || amt <= 0) {
-      toast.error("Please enter a valid amount");
+    if (!amt || amt < WITHDRAW_MIN) {
+      toast.error(`Minimum withdrawal amount is ₹${WITHDRAW_MIN}`);
+      return;
+    }
+    if (amt > WITHDRAW_MAX) {
+      toast.error(`Maximum withdrawal amount is ₹${WITHDRAW_MAX}`);
       return;
     }
     const winBal = Number(player?.winningBalance ?? 0n);
@@ -808,8 +814,8 @@ export default function WalletPage({
                     data-ocid="wallet.withdraw.amount.input"
                   />
                   <p className="text-[10px] text-muted-foreground">
-                    Max: ₹{String(player?.winningBalance ?? 0n)} (winning
-                    balance only)
+                    Min: ₹{WITHDRAW_MIN} · Max: ₹{WITHDRAW_MAX} (winning balance
+                    only)
                   </p>
                 </div>
 

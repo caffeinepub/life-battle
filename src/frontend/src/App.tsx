@@ -1,9 +1,8 @@
 import { Toaster } from "@/components/ui/sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { UserRole } from "./backend.d";
 import { useInternetIdentity } from "./hooks/useInternetIdentity";
-import { useGetCallerProfile, useGetCallerRole } from "./hooks/useQueries";
+import { useGetCallerProfile } from "./hooks/useQueries";
 
 import AdminLoginPage from "./pages/AdminLoginPage";
 import HomePage from "./pages/HomePage";
@@ -25,6 +24,7 @@ import AdminPlayerManagementPage from "./pages/admin/AdminPlayerManagementPage";
 import AppHeader from "./components/AppHeader";
 // Layout
 import BottomNav from "./components/BottomNav";
+import SplashScreen from "./components/SplashScreen";
 
 export type PlayerPage =
   | "home"
@@ -54,17 +54,20 @@ export default function App() {
   const { identity, isInitializing } = useInternetIdentity();
   const [nav, setNav] = useState<AppNav>({ page: "home" });
   const [isAdminMode, setIsAdminMode] = useState(false);
+  const [splashDone, setSplashDone] = useState(false);
   const queryClient = useQueryClient();
 
   const isLoggedIn = !!identity && !identity.getPrincipal().isAnonymous();
 
-  // Only fetch profile/role when actually logged in
+  // Only fetch profile when actually logged in
   const { data: profile, isLoading: profileLoading } = useGetCallerProfile();
-  const { data: role } = useGetCallerRole();
-
-  const isAdmin = role === UserRole.admin;
 
   const navigate = (navState: AppNav) => setNav(navState);
+
+  // Always show splash on first load
+  if (!splashDone) {
+    return <SplashScreen onComplete={() => setSplashDone(true)} />;
+  }
 
   // Show spinner only during Internet Identity initialization
   if (isInitializing) {
@@ -122,9 +125,10 @@ export default function App() {
       <div className="min-h-screen bg-background">
         <AdminLoginPage
           onAdminLoginSuccess={() => {
-            queryClient.invalidateQueries({ queryKey: ["actor"] });
-            queryClient.invalidateQueries({ queryKey: ["callerRole"] });
             queryClient.invalidateQueries({ queryKey: ["matches"] });
+            queryClient.invalidateQueries({ queryKey: ["depositRequests"] });
+            queryClient.invalidateQueries({ queryKey: ["withdrawRequests"] });
+            queryClient.invalidateQueries({ queryKey: ["adminDashboard"] });
             setIsAdminMode(true);
             navigate({ page: "admin-dashboard" });
           }}
@@ -135,8 +139,8 @@ export default function App() {
     );
   }
 
-  // Admin mode
-  if (isAdminMode && isAdmin) {
+  // Admin mode — gated only by frontend credentials check
+  if (isAdminMode) {
     return (
       <div className="min-h-screen bg-background">
         <div className="max-w-[430px] mx-auto min-h-screen flex flex-col relative">
@@ -241,7 +245,7 @@ export default function App() {
           <BottomNav
             current={nav.page as PlayerPage}
             navigate={navigate}
-            isAdmin={isAdmin}
+            isAdmin={false}
             onAdminClick={() => {
               navigate({ page: "admin-login" });
             }}

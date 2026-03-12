@@ -21,6 +21,7 @@ import {
   Edit,
   Loader2,
   Plus,
+  ShieldCheck,
   Swords,
   Trash2,
   TrendingUp,
@@ -36,7 +37,6 @@ import {
   MatchStatus,
   Variant_pending_approved_rejected,
 } from "../../backend.d";
-import { useInternetIdentity } from "../../hooks/useInternetIdentity";
 import {
   useApproveDepositRequest,
   useApproveWithdrawRequest,
@@ -45,7 +45,6 @@ import {
   useGetDepositRequests,
   useGetMatches,
   useGetWithdrawRequests,
-  useIsCallerAdmin,
   useRejectDepositRequest,
   useRejectWithdrawRequest,
 } from "../../hooks/useQueries";
@@ -134,11 +133,135 @@ function RejectInput({
   );
 }
 
+type KycEntry = {
+  playerId: string;
+  status: string;
+  submittedAt: number;
+};
+
+function getKycEntries(): KycEntry[] {
+  const entries: KycEntry[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key?.startsWith("kyc_data_")) {
+      const playerId = key.replace("kyc_data_", "");
+      const status = localStorage.getItem(`kyc_status_${playerId}`) ?? "none";
+      try {
+        const data = JSON.parse(localStorage.getItem(key) ?? "{}");
+        entries.push({ playerId, status, submittedAt: data.submittedAt ?? 0 });
+      } catch {
+        entries.push({ playerId, status, submittedAt: 0 });
+      }
+    }
+  }
+  return entries.sort((a, b) => b.submittedAt - a.submittedAt);
+}
+
+function KycTab() {
+  const [entries, setEntries] = useState<KycEntry[]>(() => getKycEntries());
+
+  const refresh = () => setEntries(getKycEntries());
+
+  const approve = (playerId: string) => {
+    localStorage.setItem(`kyc_status_${playerId}`, "verified");
+    toast.success(`KYC approved for player #${playerId}`);
+    refresh();
+  };
+
+  const reject = (playerId: string) => {
+    localStorage.setItem(`kyc_status_${playerId}`, "rejected");
+    toast.error(`KYC rejected for player #${playerId}`);
+    refresh();
+  };
+
+  const pending = entries.filter((e) => e.status === "pending");
+  const others = entries.filter((e) => e.status !== "pending");
+  const all = [...pending, ...others];
+
+  if (all.length === 0) {
+    return (
+      <div
+        className="text-center py-8 text-muted-foreground"
+        data-ocid="admin.kyc.empty_state"
+      >
+        <ShieldCheck className="h-8 w-8 mx-auto mb-2 opacity-40" />
+        <p className="font-heading font-bold">No KYC submissions yet</p>
+        <p className="text-xs mt-1">Players who submit KYC will appear here</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {all.map((entry, idx) => (
+        <motion.div
+          key={entry.playerId}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: idx * 0.04 }}
+          className="rounded-xl border border-border bg-card p-3 space-y-2"
+          data-ocid={`admin.kyc.item.${idx + 1}`}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <p className="font-heading font-bold text-sm text-foreground">
+                Player #{entry.playerId}
+              </p>
+              <p className="text-[10px] text-muted-foreground font-mono">
+                Submitted:{" "}
+                {entry.submittedAt
+                  ? new Date(entry.submittedAt).toLocaleString()
+                  : "Unknown"}
+              </p>
+            </div>
+            {entry.status === "pending" && (
+              <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30 text-[10px]">
+                Pending
+              </Badge>
+            )}
+            {entry.status === "verified" && (
+              <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-[10px]">
+                Verified
+              </Badge>
+            )}
+            {entry.status === "rejected" && (
+              <Badge className="bg-destructive/20 text-destructive border-destructive/30 text-[10px]">
+                Rejected
+              </Badge>
+            )}
+          </div>
+          {entry.status === "pending" && (
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white flex-1"
+                onClick={() => approve(entry.playerId)}
+                data-ocid={`admin.kyc.confirm_button.${idx + 1}`}
+              >
+                <CheckCircle2 className="h-3 w-3 mr-1" />
+                Approve
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs border-destructive/40 text-destructive hover:bg-destructive/10 flex-1"
+                onClick={() => reject(entry.playerId)}
+                data-ocid={`admin.kyc.delete_button.${idx + 1}`}
+              >
+                <XCircle className="h-3 w-3 mr-1" />
+                Reject
+              </Button>
+            </div>
+          )}
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+
 export default function AdminDashboardPage({
   navigate,
 }: AdminDashboardPageProps) {
-  const { identity } = useInternetIdentity();
-  const { data: isAdmin, isLoading: adminLoading } = useIsCallerAdmin();
   const { data: dashboard, isLoading: dashLoading } = useGetAdminDashboard();
   const { data: matches, isLoading: matchesLoading } = useGetMatches();
   const { data: depositRequests, isLoading: drLoading } =
@@ -151,39 +274,6 @@ export default function AdminDashboardPage({
   const rejectDeposit = useRejectDepositRequest();
   const approveWithdraw = useApproveWithdrawRequest();
   const rejectWithdraw = useRejectWithdrawRequest();
-
-  if (!identity || identity.getPrincipal().isAnonymous()) {
-    return (
-      <div className="p-4 text-center py-16" data-ocid="admin.error_state">
-        <p className="font-heading font-bold text-destructive">
-          Please login first
-        </p>
-      </div>
-    );
-  }
-
-  if (adminLoading) {
-    return (
-      <div className="p-4 space-y-4" data-ocid="admin.loading_state">
-        <Skeleton className="h-32 w-full rounded-2xl" />
-        <Skeleton className="h-24 w-full rounded-xl" />
-      </div>
-    );
-  }
-
-  if (!isAdmin) {
-    return (
-      <div className="p-4 text-center py-16" data-ocid="admin.error_state">
-        <div className="text-4xl mb-4">🔒</div>
-        <p className="font-heading font-black text-xl text-destructive">
-          Access Denied
-        </p>
-        <p className="text-muted-foreground text-sm mt-2">
-          You don't have admin privileges.
-        </p>
-      </div>
-    );
-  }
 
   const [totalPlayers, totalMatches, totalRevenue] = dashboard ?? [0n, 0n, 0n];
 
@@ -223,6 +313,21 @@ export default function AdminDashboardPage({
   const pendingWithdraws = (withdrawRequests ?? []).filter(
     (r) => r.status === Variant_pending_approved_rejected.pending,
   );
+
+  // Count pending KYC
+  const pendingKycCount = (() => {
+    let count = 0;
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (
+        key?.startsWith("kyc_status_") &&
+        localStorage.getItem(key) === "pending"
+      ) {
+        count++;
+      }
+    }
+    return count;
+  })();
 
   return (
     <div className="p-4 space-y-5">
@@ -286,7 +391,7 @@ export default function AdminDashboardPage({
         </Button>
       </div>
 
-      {/* Tabs: Matches / Deposits / Withdrawals */}
+      {/* Tabs */}
       <Tabs defaultValue="matches" data-ocid="admin.tabs.section">
         <TabsList className="w-full bg-card border border-border">
           <TabsTrigger
@@ -317,6 +422,18 @@ export default function AdminDashboardPage({
             {pendingWithdraws.length > 0 && (
               <span className="ml-1 bg-primary text-primary-foreground rounded-full text-[9px] px-1">
                 {pendingWithdraws.length}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger
+            value="kyc"
+            className="flex-1 font-heading font-bold text-xs"
+            data-ocid="admin.kyc.tab"
+          >
+            KYC
+            {pendingKycCount > 0 && (
+              <span className="ml-1 bg-primary text-primary-foreground rounded-full text-[9px] px-1">
+                {pendingKycCount}
               </span>
             )}
           </TabsTrigger>
@@ -493,7 +610,6 @@ export default function AdminDashboardPage({
                         )}
                       </div>
                     </div>
-
                     {req.status ===
                       Variant_pending_approved_rejected.pending && (
                       <div className="flex gap-2 flex-wrap">
@@ -596,7 +712,6 @@ export default function AdminDashboardPage({
                         )}
                       </div>
                     </div>
-
                     {req.status ===
                       Variant_pending_approved_rejected.pending && (
                       <div className="flex gap-2 flex-wrap">
@@ -644,6 +759,11 @@ export default function AdminDashboardPage({
                 ))}
             </div>
           )}
+        </TabsContent>
+
+        {/* ── KYC Tab ── */}
+        <TabsContent value="kyc" className="mt-3">
+          <KycTab />
         </TabsContent>
       </Tabs>
     </div>
