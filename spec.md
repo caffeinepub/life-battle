@@ -1,31 +1,30 @@
-# Life Battle
+# Life Battle — Announcement System
 
 ## Current State
-Full Free Fire tournament platform with player/admin app, match system, leaderboard, wallet (basic balance + tx history), and room ID/password system. Backend has Player, Match, WalletTransaction types with authorization.
+The app has a full admin dashboard with match, deposit, withdrawal, and KYC tabs. Players have home, matches, leaderboard, wallet, and profile pages. There is no announcement system yet. The BottomNav shows 5 player nav items plus an Admin button.
 
 ## Requested Changes (Diff)
 
 ### Add
-- DepositRequest type: player submits amount, UPI transaction ID, screenshot upload; goes to admin for approval
-- WithdrawRequest type: player submits UPI ID and amount (from winning balance only); goes to admin for approval
-- Admin endpoints: getDepositRequests, approveDepositRequest, rejectDepositRequest, getWithdrawRequests, approveWithdrawRequest, rejectWithdrawRequest
-- Player endpoints: submitDepositRequest, submitWithdrawRequest, getPlayerDepositRequests, getPlayerWithdrawRequests
-- winningBalance field on Player (separate from walletBalance; prizes credit here; withdrawals only from winningBalance)
-- Wallet page: Deposit button with amount selector (₹10/50/100/200/500), QR code display with 3-minute countdown timer, transaction ID input, upload screenshot instruction, submit button
-- Wallet page: Withdraw button with UPI ID input and amount (only from winning balance)
-- Wallet page: performance stats (kills, matches, wins)
-- Admin wallet management: approve/reject deposit and withdraw requests
+- `AnnouncementsPage` — player-facing page listing all announcements in dark esports card style
+- Admin `Announcements` tab inside `AdminDashboardPage` — create/edit/delete/pin announcements
+- Announcement localStorage store (`announcements` key) shared between admin and players
+- Notification badge on BottomNav Announcements icon showing unread count
+- `announcements` route in `PlayerPage` type and `App.tsx` routing
+- Announcement icon in BottomNav (replacing or alongside existing items)
 
 ### Modify
-- WalletPage: full redesign with deposit/withdraw flows, performance stats section, wallet message
-- Player type: add winningBalance field
-- setMatchResult: credit prize to winnerName player's winningBalance
-- Admin dashboard: add deposit/withdraw request management sections
+- `App.tsx` — add `announcements` to `PlayerPage` type, add route rendering, update `getPageTitle`
+- `BottomNav.tsx` — add Announcements nav item with notification badge for unread count
+- `AdminDashboardPage.tsx` — add Announcements tab with create/edit/delete/pin UI
 
 ### Remove
-- Nothing removed
+- Nothing
 
 ## Implementation Plan
-1. Update backend main.mo: add DepositRequest, WithdrawRequest types, winningBalance to Player, all new endpoints
-2. Update frontend WalletPage with full deposit/withdraw UI, QR code image, 3-minute timer, stats
-3. Update AdminDashboardPage with deposit/withdraw approval panels
+1. Define `Announcement` type: `{ id: string, title: string, message: string, createdAt: number, isPinned: boolean }`
+2. Create localStorage helpers: `getAnnouncements()`, `saveAnnouncements()`, `getLastSeenTimestamp()`, `markAllSeen()`
+3. Build `AnnouncementsPage` with dark esports card design — pinned items first, notification cleared on visit
+4. Add `Announcements` tab to `AdminDashboardPage` — inline form for create, edit inline, delete with confirm, pin toggle
+5. Update `App.tsx` to add `announcements` page type and routing
+6. Update `BottomNav` to include Announcements icon with red badge showing unseen count

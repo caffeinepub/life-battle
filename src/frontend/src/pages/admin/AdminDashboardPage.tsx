@@ -14,19 +14,25 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import {
+  Bell,
   CheckCircle2,
   Crown,
   Edit,
   Loader2,
+  Megaphone,
+  Pin,
   Plus,
+  Save,
   ShieldCheck,
   Swords,
   Trash2,
   TrendingUp,
   Users,
   Wallet,
+  X,
   XCircle,
 } from "lucide-react";
 import { motion } from "motion/react";
@@ -49,6 +55,11 @@ import {
   useRejectWithdrawRequest,
 } from "../../hooks/useQueries";
 import { formatAmount, formatDate, getStatusLabel } from "../../utils/format";
+import {
+  type Announcement,
+  getAnnouncements,
+  saveAnnouncements,
+} from "../AnnouncementsPage";
 
 interface AdminDashboardPageProps {
   navigate: (nav: AppNav) => void;
@@ -259,6 +270,303 @@ function KycTab() {
   );
 }
 
+// ── Announcements Admin Tab ──
+function AnnouncementsAdminTab() {
+  const [announcements, setAnnouncements] = useState<Announcement[]>(() => {
+    const items = getAnnouncements();
+    return [...items].sort((a, b) => {
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+      return b.createdAt - a.createdAt;
+    });
+  });
+
+  const [title, setTitle] = useState("");
+  const [message, setMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  // Edit state
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editMessage, setEditMessage] = useState("");
+
+  const refresh = () => {
+    const items = getAnnouncements();
+    const sorted = [...items].sort((a, b) => {
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+      return b.createdAt - a.createdAt;
+    });
+    setAnnouncements(sorted);
+  };
+
+  const handleCreate = () => {
+    if (!title.trim() || !message.trim()) {
+      toast.error("Title and message are required");
+      return;
+    }
+    setSubmitting(true);
+    const newItem: Announcement = {
+      id: String(Date.now()),
+      title: title.trim(),
+      message: message.trim(),
+      createdAt: Date.now(),
+      isPinned: false,
+    };
+    const existing = getAnnouncements();
+    saveAnnouncements([newItem, ...existing]);
+    setTitle("");
+    setMessage("");
+    setSubmitting(false);
+    refresh();
+    toast.success("Announcement posted!");
+  };
+
+  const handleDelete = (id: string) => {
+    const updated = getAnnouncements().filter((a) => a.id !== id);
+    saveAnnouncements(updated);
+    refresh();
+    toast.success("Announcement deleted");
+  };
+
+  const handleTogglePin = (id: string) => {
+    const updated = getAnnouncements().map((a) =>
+      a.id === id ? { ...a, isPinned: !a.isPinned } : a,
+    );
+    saveAnnouncements(updated);
+    refresh();
+  };
+
+  const startEdit = (item: Announcement) => {
+    setEditingId(item.id);
+    setEditTitle(item.title);
+    setEditMessage(item.message);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editTitle.trim() || !editMessage.trim()) {
+      toast.error("Title and message are required");
+      return;
+    }
+    const updated = getAnnouncements().map((a) =>
+      a.id === editingId
+        ? { ...a, title: editTitle.trim(), message: editMessage.trim() }
+        : a,
+    );
+    saveAnnouncements(updated);
+    setEditingId(null);
+    refresh();
+    toast.success("Announcement updated");
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Create form */}
+      <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-3">
+        <div className="flex items-center gap-2 mb-1">
+          <Megaphone className="h-4 w-4 text-primary" />
+          <h3 className="font-heading font-bold text-sm text-foreground">
+            Post New Announcement
+          </h3>
+        </div>
+        <Input
+          placeholder="Announcement Title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          className="bg-card border-border text-sm"
+          data-ocid="admin.announcement.title.input"
+        />
+        <Textarea
+          placeholder="Announcement Message..."
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          rows={3}
+          className="bg-card border-border text-sm resize-none"
+          data-ocid="admin.announcement.message.textarea"
+        />
+        <Button
+          onClick={handleCreate}
+          disabled={submitting || !title.trim() || !message.trim()}
+          className="w-full bg-primary text-primary-foreground font-heading font-bold"
+          data-ocid="admin.announcement.submit_button"
+        >
+          {submitting ? (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <Bell className="h-4 w-4 mr-2" />
+          )}
+          Post Announcement
+        </Button>
+      </div>
+
+      {/* Announcements list */}
+      {announcements.length === 0 ? (
+        <div
+          className="text-center py-10 text-muted-foreground"
+          data-ocid="admin.announcements.empty_state"
+        >
+          <Megaphone className="h-8 w-8 mx-auto mb-2 opacity-40" />
+          <p className="font-heading font-bold">No announcements yet</p>
+          <p className="text-xs mt-1">Post your first announcement above</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {announcements.map((item, idx) => (
+            <motion.div
+              key={item.id}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.04 }}
+              className={cn(
+                "rounded-xl border p-3 space-y-2",
+                item.isPinned
+                  ? "border-yellow-500/40 bg-yellow-500/5"
+                  : "border-border bg-card",
+              )}
+              data-ocid={`admin.announcement.item.${idx + 1}`}
+            >
+              {editingId === item.id ? (
+                // Inline edit form
+                <div className="space-y-2">
+                  <Input
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    className="bg-background border-border text-sm h-8"
+                    placeholder="Title"
+                  />
+                  <Textarea
+                    value={editMessage}
+                    onChange={(e) => setEditMessage(e.target.value)}
+                    rows={2}
+                    className="bg-background border-border text-sm resize-none"
+                    placeholder="Message"
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white flex-1"
+                      onClick={handleSaveEdit}
+                      data-ocid={`admin.announcement.save_button.${idx + 1}`}
+                    >
+                      <Save className="h-3 w-3 mr-1" />
+                      Save
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 text-xs"
+                      onClick={() => setEditingId(null)}
+                      data-ocid={`admin.announcement.cancel_button.${idx + 1}`}
+                    >
+                      <X className="h-3 w-3 mr-1" />
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                // Display mode
+                <>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p
+                          className={cn(
+                            "font-heading font-bold text-sm truncate",
+                            item.isPinned
+                              ? "text-yellow-300"
+                              : "text-foreground",
+                          )}
+                        >
+                          {item.title}
+                        </p>
+                        {item.isPinned && (
+                          <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30 text-[9px] px-1.5">
+                            <Pin className="h-2.5 w-2.5 mr-0.5" />
+                            Pinned
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                        {item.message}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground/60 font-mono mt-1">
+                        {new Date(item.createdAt).toLocaleString("en-IN")}
+                      </p>
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      {/* Pin toggle */}
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className={cn(
+                          "h-7 w-7",
+                          item.isPinned
+                            ? "text-yellow-400 hover:text-yellow-300"
+                            : "text-muted-foreground hover:text-yellow-400",
+                        )}
+                        onClick={() => handleTogglePin(item.id)}
+                        title={item.isPinned ? "Unpin" : "Pin"}
+                        data-ocid={`admin.announcement.toggle.${idx + 1}`}
+                      >
+                        <Pin className="h-3.5 w-3.5" />
+                      </Button>
+                      {/* Edit */}
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 text-muted-foreground hover:text-primary"
+                        onClick={() => startEdit(item)}
+                        data-ocid={`admin.announcement.edit_button.${idx + 1}`}
+                      >
+                        <Edit className="h-3.5 w-3.5" />
+                      </Button>
+                      {/* Delete */}
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                            data-ocid={`admin.announcement.delete_button.${idx + 1}`}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent data-ocid="admin.announcement.delete.dialog">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>
+                              Delete Announcement?
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will permanently delete "{item.title}".
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel data-ocid="admin.announcement.delete.cancel_button">
+                              Cancel
+                            </AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDelete(item.id)}
+                              className="bg-destructive text-destructive-foreground"
+                              data-ocid="admin.announcement.delete.confirm_button"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </div>
+                </>
+              )}
+            </motion.div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminDashboardPage({
   navigate,
 }: AdminDashboardPageProps) {
@@ -329,6 +637,9 @@ export default function AdminDashboardPage({
     return count;
   })();
 
+  // Count announcements
+  const announcementCount = getAnnouncements().length;
+
   return (
     <div className="p-4 space-y-5">
       {/* Stats */}
@@ -393,17 +704,17 @@ export default function AdminDashboardPage({
 
       {/* Tabs */}
       <Tabs defaultValue="matches" data-ocid="admin.tabs.section">
-        <TabsList className="w-full bg-card border border-border">
+        <TabsList className="w-full bg-card border border-border flex flex-wrap gap-0.5 h-auto p-1">
           <TabsTrigger
             value="matches"
-            className="flex-1 font-heading font-bold text-xs"
+            className="flex-1 font-heading font-bold text-xs min-w-0"
             data-ocid="admin.matches.tab"
           >
             Matches ({(matches ?? []).length})
           </TabsTrigger>
           <TabsTrigger
             value="deposits"
-            className="flex-1 font-heading font-bold text-xs"
+            className="flex-1 font-heading font-bold text-xs min-w-0"
             data-ocid="admin.deposits.tab"
           >
             Deposits
@@ -415,10 +726,10 @@ export default function AdminDashboardPage({
           </TabsTrigger>
           <TabsTrigger
             value="withdrawals"
-            className="flex-1 font-heading font-bold text-xs"
+            className="flex-1 font-heading font-bold text-xs min-w-0"
             data-ocid="admin.withdrawals.tab"
           >
-            Withdrawals
+            Withdraw
             {pendingWithdraws.length > 0 && (
               <span className="ml-1 bg-primary text-primary-foreground rounded-full text-[9px] px-1">
                 {pendingWithdraws.length}
@@ -427,13 +738,25 @@ export default function AdminDashboardPage({
           </TabsTrigger>
           <TabsTrigger
             value="kyc"
-            className="flex-1 font-heading font-bold text-xs"
+            className="flex-1 font-heading font-bold text-xs min-w-0"
             data-ocid="admin.kyc.tab"
           >
             KYC
             {pendingKycCount > 0 && (
               <span className="ml-1 bg-primary text-primary-foreground rounded-full text-[9px] px-1">
                 {pendingKycCount}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger
+            value="announcements"
+            className="flex-1 font-heading font-bold text-xs min-w-0"
+            data-ocid="admin.announcements.tab"
+          >
+            Alerts
+            {announcementCount > 0 && (
+              <span className="ml-1 bg-primary text-primary-foreground rounded-full text-[9px] px-1">
+                {announcementCount}
               </span>
             )}
           </TabsTrigger>
@@ -764,6 +1087,11 @@ export default function AdminDashboardPage({
         {/* ── KYC Tab ── */}
         <TabsContent value="kyc" className="mt-3">
           <KycTab />
+        </TabsContent>
+
+        {/* ── Announcements Tab ── */}
+        <TabsContent value="announcements" className="mt-3">
+          <AnnouncementsAdminTab />
         </TabsContent>
       </Tabs>
     </div>

@@ -5,6 +5,7 @@ import { useInternetIdentity } from "./hooks/useInternetIdentity";
 import { useGetCallerProfile } from "./hooks/useQueries";
 
 import AdminLoginPage from "./pages/AdminLoginPage";
+import AnnouncementsPage from "./pages/AnnouncementsPage";
 import HomePage from "./pages/HomePage";
 import LeaderboardPage from "./pages/LeaderboardPage";
 // Player pages
@@ -32,6 +33,7 @@ export type PlayerPage =
   | "paid-matches"
   | "match-detail"
   | "leaderboard"
+  | "announcements"
   | "profile"
   | "history"
   | "wallet";
@@ -183,7 +185,7 @@ export default function App() {
     "home",
     "free-matches",
     "paid-matches",
-    "leaderboard",
+    "announcements",
     "profile",
     "wallet",
   ];
@@ -199,6 +201,7 @@ export default function App() {
             ![
               "free-matches",
               "paid-matches",
+              "announcements",
               "leaderboard",
               "profile",
               "wallet",
@@ -229,6 +232,9 @@ export default function App() {
           )}
           {nav.page === "leaderboard" && (
             <LeaderboardPage navigate={navigate} />
+          )}
+          {nav.page === "announcements" && (
+            <AnnouncementsPage navigate={navigate} />
           )}
           {nav.page === "profile" && (
             <ProfilePage navigate={navigate} playerId={playerId} />
@@ -264,6 +270,7 @@ function getPageTitle(page: AppPage): string {
     "paid-matches": "Paid Matches",
     "match-detail": "Match Details",
     leaderboard: "Leaderboard",
+    announcements: "Announcements",
     profile: "My Profile",
     history: "Match History",
     wallet: "Wallet",
