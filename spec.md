@@ -1,30 +1,32 @@
-# Life Battle — Announcement System
+# Life Battle Tournament
 
 ## Current State
-The app has a full admin dashboard with match, deposit, withdrawal, and KYC tabs. Players have home, matches, leaderboard, wallet, and profile pages. There is no announcement system yet. The BottomNav shows 5 player nav items plus an Admin button.
+- manifest.json exists with display: standalone, correct start_url, icons, theme/background color
+- manifest is linked in index.html head
+- No service worker exists (sw.js missing)
+- No service worker registration in main.tsx or index.html
+- App layout is already mobile-optimized with top bar and bottom nav
 
 ## Requested Changes (Diff)
 
 ### Add
-- `AnnouncementsPage` — player-facing page listing all announcements in dark esports card style
-- Admin `Announcements` tab inside `AdminDashboardPage` — create/edit/delete/pin announcements
-- Announcement localStorage store (`announcements` key) shared between admin and players
-- Notification badge on BottomNav Announcements icon showing unread count
-- `announcements` route in `PlayerPage` type and `App.tsx` routing
-- Announcement icon in BottomNav (replacing or alongside existing items)
+- Service worker (`public/sw.js`) with:
+  - App shell caching strategy (cache-first for assets, network-first for API)
+  - Offline fallback to cached index.html
+  - Cache versioning for easy updates
+- Service worker registration script in index.html (before closing body tag)
+- `<meta name="theme-color">` already present; ensure it matches manifest (#0000FF)
 
 ### Modify
-- `App.tsx` — add `announcements` to `PlayerPage` type, add route rendering, update `getPageTitle`
-- `BottomNav.tsx` — add Announcements nav item with notification badge for unread count
-- `AdminDashboardPage.tsx` — add Announcements tab with create/edit/delete/pin UI
+- index.html: update theme-color meta to `#0000FF` to match manifest; add SW registration inline script
+- Ensure all `<a>` tags and navigation use in-app routing (React Router) rather than full-page href to prevent external browser opening
+- Add `target="_self"` and remove any `target="_blank"` on internal navigation links
+- Mobile viewport meta: add `user-scalable=no, viewport-fit=cover` for full-screen native feel
 
 ### Remove
-- Nothing
+- Nothing to remove
 
 ## Implementation Plan
-1. Define `Announcement` type: `{ id: string, title: string, message: string, createdAt: number, isPinned: boolean }`
-2. Create localStorage helpers: `getAnnouncements()`, `saveAnnouncements()`, `getLastSeenTimestamp()`, `markAllSeen()`
-3. Build `AnnouncementsPage` with dark esports card design — pinned items first, notification cleared on visit
-4. Add `Announcements` tab to `AdminDashboardPage` — inline form for create, edit inline, delete with confirm, pin toggle
-5. Update `App.tsx` to add `announcements` page type and routing
-6. Update `BottomNav` to include Announcements icon with red badge showing unseen count
+1. Create `src/frontend/public/sw.js` with install/activate/fetch event handlers using cache-first for static assets and network-first for API calls, offline fallback
+2. Update `src/frontend/index.html`: fix theme-color to #0000FF, viewport to include viewport-fit=cover and user-scalable=no, add SW registration inline script
+3. Audit App.tsx / router for any external-opening links; ensure internal navigation stays in-app

@@ -23,9 +23,8 @@ export function useGetMatches() {
       return actor.getMatches();
     },
     enabled: !!actor && !isFetching,
-    staleTime: 0,
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -38,6 +37,8 @@ export function useGetCallerProfile() {
       return actor.getCallerUserProfile();
     },
     enabled: !!actor && !isFetching,
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -50,6 +51,8 @@ export function useGetCallerRole() {
       return actor.getCallerUserRole();
     },
     enabled: !!actor && !isFetching,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -63,6 +66,8 @@ export function useGetPlayerDetails(playerId: number | undefined) {
       return actor.getPlayerDetails(playerId);
     },
     enabled: !!actor && !isFetching && playerId !== undefined,
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -75,6 +80,8 @@ export function useGetPlayerMatches(playerId: number | undefined) {
       return actor.getPlayerMatches(playerId);
     },
     enabled: !!actor && !isFetching && playerId !== undefined,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -87,6 +94,8 @@ export function useGetWalletTransactions(playerId: number | undefined) {
       return actor.getWalletTransactions(playerId);
     },
     enabled: !!actor && !isFetching && playerId !== undefined,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -102,6 +111,8 @@ export function useGetLeaderboard() {
       >;
     },
     enabled: !!actor && !isFetching,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -114,6 +125,8 @@ export function useGetAllPlayers() {
       return (actor as any).getAllPlayers();
     },
     enabled: !!actor && !isFetching,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -126,6 +139,8 @@ export function useGetMatchRoomDetails(matchId: number | undefined) {
       return actor.getMatchRoomDetails(matchId);
     },
     enabled: !!actor && !isFetching && matchId !== undefined,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -138,6 +153,8 @@ export function useIsCallerAdmin() {
       return actor.isCallerAdmin();
     },
     enabled: !!actor && !isFetching,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -150,6 +167,8 @@ export function useGetAdminDashboard() {
       return actor.getAdminDashboard();
     },
     enabled: !!actor && !isFetching,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -164,6 +183,8 @@ export function useGetPlayerDepositRequests() {
       return actor.getPlayerDepositRequests();
     },
     enabled: !!actor && !isFetching,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -176,6 +197,8 @@ export function useGetPlayerWithdrawRequests() {
       return actor.getPlayerWithdrawRequests();
     },
     enabled: !!actor && !isFetching,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -188,6 +211,8 @@ export function useGetDepositRequests() {
       return actor.getDepositRequests();
     },
     enabled: !!actor && !isFetching,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -200,6 +225,8 @@ export function useGetWithdrawRequests() {
       return actor.getWithdrawRequests();
     },
     enabled: !!actor && !isFetching,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
 }
 

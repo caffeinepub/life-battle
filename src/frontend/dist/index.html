@@ -1,20 +1,27 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Life Battle Tournament</title>
     <meta name="description" content="A tournament app where users can join and host battles and competitions." />
-    <meta name="theme-color" content="#0d1117" />
+    <meta name="theme-color" content="#0000FF" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="LifeBattle" />
     <link rel="manifest" href="/manifest.json" />
     <link rel="apple-touch-icon" href="/assets/generated/icon-192x192.dim_192x192.png" />
-    <script type="module" crossorigin src="/assets/index-D23yMorI.js"></script>
+    <script type="module" crossorigin src="/assets/index-Csw0_JDX.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-BlXP0gnZ.css">
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('/sw.js').catch(function () {});
+        });
+      }
+    </script>
   </body>
 </html>
