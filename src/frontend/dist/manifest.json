@@ -3,12 +3,13 @@
   "short_name": "LifeBattle",
   "description": "A tournament app where users can join and host battles and competitions.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "window-controls-overlay"],
   "orientation": "portrait",
   "theme_color": "#0000FF",
   "background_color": "#0000FF",
   "lang": "en",
-  "scope": "/",
   "icons": [
     {
       "src": "/assets/generated/icon-192x192.dim_192x192.png",
