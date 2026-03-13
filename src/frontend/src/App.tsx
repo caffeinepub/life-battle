@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "motion/react";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useInternetIdentity } from "./hooks/useInternetIdentity";
 import { useGetCallerProfile } from "./hooks/useQueries";
 
@@ -58,6 +58,9 @@ const pageVariants = {
   exit: { opacity: 0, x: -18 },
 };
 
+// Max time to wait for profile load before giving up (ms)
+const PROFILE_LOAD_TIMEOUT = 8000;
+
 export default function App() {
   const { identity, isInitializing } = useInternetIdentity();
   const [nav, setNav] = useState<AppNav>({ page: "home" });
@@ -71,10 +74,53 @@ export default function App() {
   });
   const queryClient = useQueryClient();
 
+  // Timeout fallback: if profile loading takes too long, treat as no profile
+  const [profileTimedOut, setProfileTimedOut] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const isLoggedIn = !!identity && !identity.getPrincipal().isAnonymous();
 
   // Only fetch profile when actually logged in
   const { data: profile, isLoading: profileLoading } = useGetCallerProfile();
+
+  // Start timeout when logged in and loading begins
+  useEffect(() => {
+    if (isLoggedIn && profileLoading && !profileTimedOut) {
+      timeoutRef.current = setTimeout(() => {
+        setProfileTimedOut(true);
+      }, PROFILE_LOAD_TIMEOUT);
+    } else if (!profileLoading) {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+      setProfileTimedOut(false);
+    }
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, [isLoggedIn, profileLoading, profileTimedOut]);
+
+  // Listen for storage changes (e.g. admin posts announcement on same device)
+  useEffect(() => {
+    const handler = () => {
+      const lastSeen = Number.parseInt(
+        localStorage.getItem("lb_announcements_last_seen") ?? "0",
+        10,
+      );
+      setAnnouncementCount(
+        getAnnouncements().filter((a) => a.createdAt > lastSeen).length,
+      );
+    };
+    window.addEventListener("storage", handler);
+    return () => window.removeEventListener("storage", handler);
+  }, []);
+
+  // Stable callback to reset announcement badge
+  const handleAnnouncementsViewed = useCallback(
+    () => setAnnouncementCount(0),
+    [],
+  );
 
   const navigate = (navState: AppNav) => setNav(navState);
 
@@ -102,8 +148,8 @@ export default function App() {
     );
   }
 
-  // Logged in but profile still loading
-  if (profileLoading) {
+  // Logged in but profile still loading (with timeout fallback)
+  if (profileLoading && !profileTimedOut) {
     return (
       <div className="min-h-[100dvh] bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
@@ -264,7 +310,7 @@ export default function App() {
               {nav.page === "announcements" && (
                 <AnnouncementsPage
                   navigate={navigate}
-                  onViewed={() => setAnnouncementCount(0)}
+                  onViewed={handleAnnouncementsViewed}
                 />
               )}
               {nav.page === "profile" && (

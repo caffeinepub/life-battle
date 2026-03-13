@@ -43,17 +43,23 @@ export default function AnnouncementsPage({
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
 
   useEffect(() => {
-    // Mark all as seen
+    const loadAnnouncements = () => {
+      const items = getAnnouncements();
+      const sorted = [...items].sort((a, b) => {
+        if (a.isPinned && !b.isPinned) return -1;
+        if (!a.isPinned && b.isPinned) return 1;
+        return b.createdAt - a.createdAt;
+      });
+      setAnnouncements(sorted);
+    };
+
+    loadAnnouncements();
     localStorage.setItem("lb_announcements_last_seen", String(Date.now()));
     onViewed?.();
-    const items = getAnnouncements();
-    // Sort: pinned first, then newest
-    const sorted = [...items].sort((a, b) => {
-      if (a.isPinned && !b.isPinned) return -1;
-      if (!a.isPinned && b.isPinned) return 1;
-      return b.createdAt - a.createdAt;
-    });
-    setAnnouncements(sorted);
+
+    // Refresh when tab regains focus (e.g. admin posted from same device)
+    window.addEventListener("focus", loadAnnouncements);
+    return () => window.removeEventListener("focus", loadAnnouncements);
   }, [onViewed]);
 
   return (
