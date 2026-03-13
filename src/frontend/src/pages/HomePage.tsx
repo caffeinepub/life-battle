@@ -1,6 +1,14 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { ChevronRight, History, Lock, Swords, Trophy, Zap } from "lucide-react";
+import {
+  Bell,
+  ChevronRight,
+  History,
+  Lock,
+  Swords,
+  Trophy,
+  Zap,
+} from "lucide-react";
 import { motion } from "motion/react";
 import type { AppNav } from "../App";
 import { MatchStatus, MatchType } from "../backend.d";
@@ -41,30 +49,35 @@ export default function HomePage({ navigate, playerId }: HomePageProps) {
           <p className="text-xs text-muted-foreground font-mono uppercase tracking-widest mb-1">
             Welcome back
           </p>
-          <h2 className="font-heading font-black text-2xl text-foreground mb-1">
+          <h2 className="font-heading font-black text-3xl text-foreground mb-0.5 tracking-tight">
             {player?.username ?? "Player"}
           </h2>
-          <div className="flex items-center gap-4 mt-3">
+          {player?.id && (
+            <span className="inline-block text-[10px] font-mono text-primary bg-primary/15 border border-primary/30 px-2 py-0.5 rounded-full mb-3">
+              ID: LB{player.id}
+            </span>
+          )}
+          <div className="flex items-center gap-4 mt-2">
             <div className="text-center">
-              <p className="font-heading font-bold text-lg text-primary">
+              <p className="font-heading font-bold text-xl text-primary">
                 {player?.wins?.toString() ?? "0"}
               </p>
               <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
                 Wins
               </p>
             </div>
-            <div className="w-px h-8 bg-border" />
+            <div className="w-px h-9 bg-border" />
             <div className="text-center">
-              <p className="font-heading font-bold text-lg text-accent">
+              <p className="font-heading font-bold text-xl text-accent">
                 {formatAmount(player?.walletBalance ?? 0n)}
               </p>
               <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
                 Balance
               </p>
             </div>
-            <div className="w-px h-8 bg-border" />
+            <div className="w-px h-9 bg-border" />
             <div className="text-center">
-              <p className="font-heading font-bold text-lg text-foreground">
+              <p className="font-heading font-bold text-xl text-foreground">
                 {player?.matchesPlayed?.toString() ?? "0"}
               </p>
               <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
@@ -73,8 +86,9 @@ export default function HomePage({ navigate, playerId }: HomePageProps) {
             </div>
           </div>
         </div>
-        {/* Decorative */}
-        <div className="absolute -right-4 -top-4 w-24 h-24 rounded-full bg-primary/10 blur-2xl" />
+        {/* Decorative orbs */}
+        <div className="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-primary/10 blur-2xl" />
+        <div className="absolute -left-4 -bottom-4 w-20 h-20 rounded-full bg-accent/10 blur-2xl" />
       </motion.div>
 
       {/* Ongoing matches alert */}
@@ -86,11 +100,11 @@ export default function HomePage({ navigate, playerId }: HomePageProps) {
           onClick={() => navigate({ page: "free-matches" })}
           data-ocid="home.live.card"
         >
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+          <div className="flex items-center gap-2.5">
+            <div className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse" />
             <span className="text-green-400 font-heading font-bold text-sm">
               {ongoingMatches.length} Match
-              {ongoingMatches.length > 1 ? "es" : ""} ONGOING NOW
+              {ongoingMatches.length > 1 ? "es" : ""} LIVE NOW
             </span>
           </div>
           <ChevronRight className="h-4 w-4 text-green-400" />
@@ -111,7 +125,9 @@ export default function HomePage({ navigate, playerId }: HomePageProps) {
           data-ocid="home.free_matches.button"
         >
           <div className="relative z-10">
-            <Zap className="h-8 w-8 text-green-400 mb-3" />
+            <div className="w-11 h-11 rounded-2xl bg-green-500/20 flex items-center justify-center mb-3">
+              <Zap className="h-6 w-6 text-green-400" />
+            </div>
             <h3 className="font-heading font-black text-lg text-foreground leading-tight">
               Free
               <br />
@@ -127,7 +143,7 @@ export default function HomePage({ navigate, playerId }: HomePageProps) {
               </div>
             )}
           </div>
-          <div className="absolute -bottom-4 -right-4 w-20 h-20 rounded-full bg-green-400/10 blur-xl" />
+          <div className="absolute -bottom-4 -right-4 w-24 h-24 rounded-full bg-green-400/10 blur-xl" />
         </motion.button>
 
         <motion.button
@@ -142,7 +158,9 @@ export default function HomePage({ navigate, playerId }: HomePageProps) {
           data-ocid="home.paid_matches.button"
         >
           <div className="relative z-10">
-            <Lock className="h-8 w-8 text-primary mb-3" />
+            <div className="w-11 h-11 rounded-2xl bg-primary/20 flex items-center justify-center mb-3">
+              <Lock className="h-6 w-6 text-primary" />
+            </div>
             <h3 className="font-heading font-black text-lg text-foreground leading-tight">
               Paid
               <br />
@@ -158,48 +176,67 @@ export default function HomePage({ navigate, playerId }: HomePageProps) {
               </div>
             )}
           </div>
-          <div className="absolute -bottom-4 -right-4 w-20 h-20 rounded-full bg-primary/10 blur-xl" />
+          <div className="absolute -bottom-4 -right-4 w-24 h-24 rounded-full bg-primary/10 blur-xl" />
         </motion.button>
       </div>
 
       {/* Quick actions */}
       <div>
-        <h3 className="font-heading font-bold text-sm text-muted-foreground uppercase tracking-wider mb-3">
+        <h3 className="font-heading font-bold text-xs text-muted-foreground uppercase tracking-wider mb-3">
           Quick Actions
         </h3>
         <div className="space-y-2">
           {[
             {
               icon: Trophy,
-              label: "View Leaderboard",
+              label: "Leaderboard",
               sub: "See top players",
               page: "leaderboard" as const,
+              color: "text-accent",
+              bg: "bg-accent/10",
             },
             {
               icon: History,
               label: "Match History",
               sub: "Your past matches",
               page: "history" as const,
+              color: "text-primary",
+              bg: "bg-primary/10",
+            },
+            {
+              icon: Bell,
+              label: "Announcements",
+              sub: "Latest news & alerts",
+              page: "announcements" as const,
+              color: "text-blue-400",
+              bg: "bg-blue-400/10",
             },
             {
               icon: Swords,
-              label: "All Matches",
-              sub: "Browse tournaments",
+              label: "All Tournaments",
+              sub: "Browse all matches",
               page: "free-matches" as const,
+              color: "text-green-400",
+              bg: "bg-green-400/10",
             },
-          ].map(({ icon: Icon, label, sub, page }) => (
+          ].map(({ icon: Icon, label, sub, page, color, bg }) => (
             <button
               type="button"
               key={label}
               onClick={() => navigate({ page })}
-              className="w-full flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:border-primary/30 transition-all group"
+              className="w-full flex items-center gap-3 p-4 rounded-2xl bg-card border border-border hover:border-primary/30 transition-all group active:scale-[0.98]"
               data-ocid={`home.${page}.button`}
             >
-              <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                <Icon className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+              <div
+                className={cn(
+                  "w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 transition-colors",
+                  bg,
+                )}
+              >
+                <Icon className={cn("h-5 w-5", color)} />
               </div>
               <div className="flex-1 text-left">
-                <p className="font-body font-medium text-sm text-foreground">
+                <p className="font-body font-semibold text-sm text-foreground">
                   {label}
                 </p>
                 <p className="text-xs text-muted-foreground">{sub}</p>

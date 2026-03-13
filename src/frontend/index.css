@@ -83,10 +83,13 @@
 
   * {
     @apply border-border;
+    -webkit-tap-highlight-color: transparent;
   }
 
   html {
     color-scheme: dark;
+    height: 100%;
+    overflow: hidden;
   }
 
   body {
@@ -97,6 +100,13 @@
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
     overscroll-behavior: none;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  #root {
+    height: 100dvh;
+    overflow: hidden;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -120,12 +130,17 @@
 
   /* Card hover effect */
   .card-hover {
-    transition: all 0.25s ease;
+    transition: all 0.2s ease;
   }
-  .card-hover:hover {
-    border-color: oklch(0.7 0.19 42 / 0.5);
-    box-shadow: 0 0 20px oklch(0.7 0.19 42 / 0.2), 0 4px 24px rgba(0,0,0,0.4);
-    transform: translateY(-1px);
+  .card-hover:active {
+    transform: scale(0.985);
+  }
+  @media (hover: hover) {
+    .card-hover:hover {
+      border-color: oklch(0.7 0.19 42 / 0.5);
+      box-shadow: 0 0 20px oklch(0.7 0.19 42 / 0.2), 0 4px 24px rgba(0,0,0,0.4);
+      transform: translateY(-1px);
+    }
   }
 
   /* Gradient text */
@@ -192,5 +207,14 @@
   .nav-active-pill {
     background: oklch(0.7 0.19 42 / 0.15);
     border-radius: 1rem;
+  }
+
+  /* Page slide animation */
+  @keyframes slideInRight {
+    from { transform: translateX(20px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+  .page-enter {
+    animation: slideInRight 0.2s ease-out;
   }
 }

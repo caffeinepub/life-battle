@@ -1,8 +1,6 @@
 import { cn } from "@/lib/utils";
-import { Home, ShieldCheck, Swords, User, Wallet } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Home, PlusCircle, Swords, User } from "lucide-react";
 import type { AppNav, PlayerPage } from "../App";
-import { getUnseenCount } from "../pages/AnnouncementsPage";
 
 interface BottomNavProps {
   current: PlayerPage;
@@ -14,118 +12,89 @@ interface BottomNavProps {
 const navItems = [
   { id: "home" as PlayerPage, icon: Home, label: "Home" },
   { id: "free-matches" as PlayerPage, icon: Swords, label: "Tournaments" },
-  { id: "wallet" as PlayerPage, icon: Wallet, label: "Wallet" },
+  { id: "create-match" as const, icon: PlusCircle, label: "Create Match" },
   { id: "profile" as PlayerPage, icon: User, label: "Profile" },
 ];
 
 export default function BottomNav({
   current,
   navigate,
-  isAdmin,
   onAdminClick,
 }: BottomNavProps) {
-  const [unseenCount, setUnseenCount] = useState(0);
-
-  useEffect(() => {
-    setUnseenCount(getUnseenCount());
-    const interval = setInterval(() => {
-      setUnseenCount(getUnseenCount());
-    }, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
   return (
-    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] z-50 bg-card border-t border-border pb-safe">
-      <div className="flex items-center justify-around px-1 pt-1.5 pb-1">
-        {navItems.map((item) => {
-          const isActive =
-            current === item.id ||
-            (item.id === "free-matches" &&
-              (current === "free-matches" || current === "paid-matches"));
-          const showBadge = item.id === "home" && unseenCount > 0;
+    <nav
+      className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] z-50"
+      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+    >
+      <div className="mx-3 mb-3 rounded-2xl bg-card/90 backdrop-blur-md border border-border shadow-lg shadow-black/40">
+        <div className="flex items-center justify-around px-2 pt-2 pb-2">
+          {navItems.map((item) => {
+            const isCreateMatch = item.id === "create-match";
+            const isActive =
+              !isCreateMatch &&
+              (current === item.id ||
+                (item.id === "free-matches" &&
+                  (current === "free-matches" || current === "paid-matches")));
 
-          return (
-            <button
-              type="button"
-              key={item.id}
-              onClick={() => {
-                if (item.id === "home") setUnseenCount(0);
-                navigate({ page: item.id });
-              }}
-              className={cn(
-                "flex flex-col items-center gap-0.5 px-2 py-1 rounded-xl transition-colors native-tap",
-                isActive
-                  ? "text-primary"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-              data-ocid={`nav.${item.id === "free-matches" ? "matches" : item.id}.link`}
-            >
-              <div
+            return (
+              <button
+                type="button"
+                key={item.id}
+                onClick={() => {
+                  if (isCreateMatch) {
+                    onAdminClick?.();
+                  } else {
+                    navigate({ page: item.id as PlayerPage });
+                  }
+                }}
                 className={cn(
-                  "relative flex items-center justify-center w-10 h-7 rounded-2xl transition-all",
-                  isActive && "nav-active-pill",
+                  "flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition-all native-tap",
+                  isCreateMatch
+                    ? "text-primary"
+                    : isActive
+                      ? "text-primary"
+                      : "text-muted-foreground hover:text-foreground",
                 )}
+                data-ocid={
+                  isCreateMatch
+                    ? "nav.create.button"
+                    : `nav.${item.id === "free-matches" ? "matches" : item.id}.link`
+                }
               >
-                <item.icon
+                <div
                   className={cn(
-                    "h-5 w-5 transition-all",
-                    isActive && "drop-shadow-[0_0_6px_oklch(0.7_0.19_42)]",
+                    "relative flex items-center justify-center w-12 h-8 rounded-2xl transition-all",
+                    isCreateMatch
+                      ? "bg-primary/15 border border-primary/30"
+                      : isActive
+                        ? "bg-primary/15"
+                        : "",
                   )}
-                />
-                {showBadge && (
-                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-red-500 border border-card" />
-                )}
-              </div>
-              <span
-                className={cn(
-                  "text-[10px] transition-all",
-                  isActive
-                    ? "text-primary font-bold"
-                    : "text-muted-foreground font-medium",
-                )}
-              >
-                {item.label}
-              </span>
-            </button>
-          );
-        })}
-
-        {/* Admin button — always visible */}
-        <button
-          type="button"
-          onClick={onAdminClick}
-          className={cn(
-            "flex flex-col items-center gap-0.5 px-2 py-1 rounded-xl transition-colors native-tap",
-            isAdmin
-              ? "text-primary"
-              : "text-muted-foreground hover:text-foreground",
-          )}
-          data-ocid="nav.admin.link"
-        >
-          <div
-            className={cn(
-              "flex items-center justify-center w-10 h-7 rounded-2xl transition-all",
-              isAdmin && "nav-active-pill",
-            )}
-          >
-            <ShieldCheck
-              className={cn(
-                "h-5 w-5 transition-all",
-                isAdmin && "drop-shadow-[0_0_6px_oklch(0.7_0.19_42)]",
-              )}
-            />
-          </div>
-          <span
-            className={cn(
-              "text-[10px] transition-all",
-              isAdmin
-                ? "text-primary font-bold"
-                : "text-muted-foreground font-medium",
-            )}
-          >
-            Admin
-          </span>
-        </button>
+                >
+                  <item.icon
+                    className={cn(
+                      "h-5 w-5 transition-all",
+                      (isActive || isCreateMatch) &&
+                        "drop-shadow-[0_0_6px_oklch(0.7_0.19_42)]",
+                    )}
+                  />
+                </div>
+                <span
+                  className={cn(
+                    "text-[9px] font-semibold transition-all leading-none",
+                    isCreateMatch
+                      ? "text-primary"
+                      : isActive
+                        ? "text-primary"
+                        : "text-muted-foreground",
+                  )}
+                >
+                  {item.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
     </nav>
   );

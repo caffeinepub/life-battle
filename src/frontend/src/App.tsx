@@ -1,5 +1,6 @@
 import { Toaster } from "@/components/ui/sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { useInternetIdentity } from "./hooks/useInternetIdentity";
 import { useGetCallerProfile } from "./hooks/useQueries";
@@ -51,6 +52,12 @@ export type AppNav = {
   matchId?: number;
 };
 
+const pageVariants = {
+  initial: { opacity: 0, x: 18 },
+  animate: { opacity: 1, x: 0 },
+  exit: { opacity: 0, x: -18 },
+};
+
 export default function App() {
   const { identity, isInitializing } = useInternetIdentity();
   const [nav, setNav] = useState<AppNav>({ page: "home" });
@@ -67,7 +74,7 @@ export default function App() {
   // Show spinner only during Internet Identity initialization
   if (isInitializing) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-[100dvh] bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 rounded-full border-2 border-primary border-t-transparent animate-spin" />
           <p className="text-muted-foreground font-body text-sm">
@@ -81,7 +88,7 @@ export default function App() {
   // Not logged in → login page
   if (!isLoggedIn) {
     return (
-      <div className="min-h-screen bg-background hero-pattern">
+      <div className="min-h-[100dvh] bg-background hero-pattern">
         <LoginPage onLoginSuccess={() => {}} />
         <Toaster richColors theme="dark" />
       </div>
@@ -91,7 +98,7 @@ export default function App() {
   // Logged in but profile still loading
   if (profileLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-[100dvh] bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 rounded-full border-2 border-primary border-t-transparent animate-spin" />
           <p className="text-muted-foreground font-body text-sm">
@@ -105,7 +112,7 @@ export default function App() {
   // Logged in but no profile → registration
   if (!profile) {
     return (
-      <div className="min-h-screen bg-background hero-pattern">
+      <div className="min-h-[100dvh] bg-background hero-pattern">
         <LoginPage onLoginSuccess={() => {}} isRegistration />
         <Toaster richColors theme="dark" />
       </div>
@@ -117,7 +124,7 @@ export default function App() {
   // Admin login page — full-screen, no chrome
   if (nav.page === "admin-login") {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-[100dvh] bg-background">
         <AdminLoginPage
           onAdminLoginSuccess={() => {
             queryClient.invalidateQueries({ queryKey: ["matches"] });
@@ -137,8 +144,8 @@ export default function App() {
   // Admin mode — gated only by frontend credentials check
   if (isAdminMode) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="max-w-[430px] mx-auto min-h-screen flex flex-col relative">
+      <div className="min-h-[100dvh] bg-background overflow-hidden">
+        <div className="max-w-[430px] mx-auto min-h-[100dvh] flex flex-col relative">
           <AppHeader
             title="Life Battle — Admin"
             isAdmin
@@ -153,7 +160,10 @@ export default function App() {
               queryClient.invalidateQueries({ queryKey: ["matches"] });
             }}
           />
-          <main className="flex-1 overflow-y-auto pb-6">
+          <main
+            className="flex-1 overflow-y-auto pb-6"
+            style={{ paddingTop: "56px" }}
+          >
             {nav.page === "admin-dashboard" && (
               <AdminDashboardPage navigate={navigate} />
             )}
@@ -181,12 +191,17 @@ export default function App() {
     "announcements",
     "profile",
     "wallet",
+    "leaderboard",
+    "history",
   ];
   const showBottomNav = bottomNavPages.includes(nav.page as PlayerPage);
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-[430px] mx-auto min-h-screen flex flex-col relative">
+    <div className="bg-background overflow-hidden" style={{ height: "100dvh" }}>
+      <div
+        className="max-w-[430px] mx-auto flex flex-col relative"
+        style={{ height: "100dvh" }}
+      >
         <AppHeader
           title={getPageTitle(nav.page)}
           onBack={
@@ -204,40 +219,55 @@ export default function App() {
           }
         />
         <main
-          className={`flex-1 overflow-y-auto ${showBottomNav ? "pb-20" : "pb-6"}`}
+          className="flex-1 overflow-y-auto"
+          style={{
+            paddingTop: "56px",
+            paddingBottom: showBottomNav ? "90px" : "24px",
+          }}
         >
-          {nav.page === "home" && (
-            <HomePage navigate={navigate} playerId={playerId} />
-          )}
-          {(nav.page === "free-matches" || nav.page === "paid-matches") && (
-            <MatchListPage
-              type={nav.page === "free-matches" ? "free" : "paid"}
-              navigate={navigate}
-              playerId={playerId}
-            />
-          )}
-          {nav.page === "match-detail" && nav.matchId !== undefined && (
-            <MatchDetailPage
-              matchId={nav.matchId}
-              navigate={navigate}
-              playerId={playerId}
-            />
-          )}
-          {nav.page === "leaderboard" && (
-            <LeaderboardPage navigate={navigate} />
-          )}
-          {nav.page === "announcements" && (
-            <AnnouncementsPage navigate={navigate} />
-          )}
-          {nav.page === "profile" && (
-            <ProfilePage navigate={navigate} playerId={playerId} />
-          )}
-          {nav.page === "history" && (
-            <MatchHistoryPage navigate={navigate} playerId={playerId} />
-          )}
-          {nav.page === "wallet" && (
-            <WalletPage navigate={navigate} playerId={playerId} />
-          )}
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={nav.page}
+              variants={pageVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={{ duration: 0.18, ease: "easeOut" }}
+            >
+              {nav.page === "home" && (
+                <HomePage navigate={navigate} playerId={playerId} />
+              )}
+              {(nav.page === "free-matches" || nav.page === "paid-matches") && (
+                <MatchListPage
+                  type={nav.page === "free-matches" ? "free" : "paid"}
+                  navigate={navigate}
+                  playerId={playerId}
+                />
+              )}
+              {nav.page === "match-detail" && nav.matchId !== undefined && (
+                <MatchDetailPage
+                  matchId={nav.matchId}
+                  navigate={navigate}
+                  playerId={playerId}
+                />
+              )}
+              {nav.page === "leaderboard" && (
+                <LeaderboardPage navigate={navigate} />
+              )}
+              {nav.page === "announcements" && (
+                <AnnouncementsPage navigate={navigate} />
+              )}
+              {nav.page === "profile" && (
+                <ProfilePage navigate={navigate} playerId={playerId} />
+              )}
+              {nav.page === "history" && (
+                <MatchHistoryPage navigate={navigate} playerId={playerId} />
+              )}
+              {nav.page === "wallet" && (
+                <WalletPage navigate={navigate} playerId={playerId} />
+              )}
+            </motion.div>
+          </AnimatePresence>
         </main>
 
         {showBottomNav && (
