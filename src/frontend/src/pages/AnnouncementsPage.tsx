@@ -33,16 +33,19 @@ export function getUnseenCount(): number {
 
 interface AnnouncementsPageProps {
   navigate: (nav: AppNav) => void;
+  onViewed?: () => void;
 }
 
 export default function AnnouncementsPage({
   navigate: _navigate,
+  onViewed,
 }: AnnouncementsPageProps) {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
 
   useEffect(() => {
     // Mark all as seen
     localStorage.setItem("lb_announcements_last_seen", String(Date.now()));
+    onViewed?.();
     const items = getAnnouncements();
     // Sort: pinned first, then newest
     const sorted = [...items].sort((a, b) => {
@@ -51,7 +54,7 @@ export default function AnnouncementsPage({
       return b.createdAt - a.createdAt;
     });
     setAnnouncements(sorted);
-  }, []);
+  }, [onViewed]);
 
   return (
     <div className="p-4 space-y-4" data-ocid="announcements.page">

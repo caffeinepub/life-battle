@@ -6,7 +6,7 @@ import { useInternetIdentity } from "./hooks/useInternetIdentity";
 import { useGetCallerProfile } from "./hooks/useQueries";
 
 import AdminLoginPage from "./pages/AdminLoginPage";
-import AnnouncementsPage from "./pages/AnnouncementsPage";
+import AnnouncementsPage, { getAnnouncements } from "./pages/AnnouncementsPage";
 import HomePage from "./pages/HomePage";
 import LeaderboardPage from "./pages/LeaderboardPage";
 // Player pages
@@ -62,6 +62,13 @@ export default function App() {
   const { identity, isInitializing } = useInternetIdentity();
   const [nav, setNav] = useState<AppNav>({ page: "home" });
   const [isAdminMode, setIsAdminMode] = useState(false);
+  const [announcementCount, setAnnouncementCount] = useState(() => {
+    const lastSeen = Number.parseInt(
+      localStorage.getItem("lb_announcements_last_seen") ?? "0",
+      10,
+    );
+    return getAnnouncements().filter((a) => a.createdAt > lastSeen).length;
+  });
   const queryClient = useQueryClient();
 
   const isLoggedIn = !!identity && !identity.getPrincipal().isAnonymous();
@@ -255,7 +262,10 @@ export default function App() {
                 <LeaderboardPage navigate={navigate} />
               )}
               {nav.page === "announcements" && (
-                <AnnouncementsPage navigate={navigate} />
+                <AnnouncementsPage
+                  navigate={navigate}
+                  onViewed={() => setAnnouncementCount(0)}
+                />
               )}
               {nav.page === "profile" && (
                 <ProfilePage navigate={navigate} playerId={playerId} />
@@ -274,9 +284,14 @@ export default function App() {
           <BottomNav
             current={nav.page as PlayerPage}
             navigate={navigate}
-            isAdmin={false}
+            isAdmin={isAdminMode}
+            announcementCount={announcementCount}
             onAdminClick={() => {
-              navigate({ page: "admin-login" });
+              if (isAdminMode) {
+                navigate({ page: "admin-dashboard" });
+              } else {
+                navigate({ page: "admin-login" });
+              }
             }}
           />
         )}
