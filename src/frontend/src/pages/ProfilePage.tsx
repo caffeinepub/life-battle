@@ -29,7 +29,7 @@ import { motion } from "motion/react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import type { AppNav } from "../App";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
+import { useFirebaseAuth } from "../hooks/useFirebaseAuth";
 import { useGetPlayerDetails, useSaveCallerProfile } from "../hooks/useQueries";
 import { formatAmount } from "../utils/format";
 import { formatPlayerId } from "../utils/playerId";
@@ -37,6 +37,7 @@ import { formatPlayerId } from "../utils/playerId";
 interface ProfilePageProps {
   navigate: (nav: AppNav) => void;
   playerId?: number;
+  onSignOut?: () => void;
 }
 
 type KycStatus = "none" | "pending" | "verified" | "rejected";
@@ -68,12 +69,14 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
-export default function ProfilePage({ navigate, playerId }: ProfilePageProps) {
-  const { identity, clear } = useInternetIdentity();
+export default function ProfilePage({
+  navigate,
+  playerId,
+  onSignOut,
+}: ProfilePageProps) {
+  const { user } = useFirebaseAuth();
   const { data: player, isLoading } = useGetPlayerDetails(playerId);
   const saveProfile = useSaveCallerProfile();
-
-  const principal = identity?.getPrincipal().toString();
 
   // Edit profile state
   const [editOpen, setEditOpen] = useState(false);
@@ -192,6 +195,8 @@ export default function ProfilePage({ navigate, playerId }: ProfilePageProps) {
     ? player.username.slice(0, 2).toUpperCase()
     : "??";
 
+  const displayId = user?.email ?? user?.uid?.slice(0, 16) ?? "—";
+
   const statsCards = [
     {
       label: "Matches Played",
@@ -280,13 +285,8 @@ export default function ProfilePage({ navigate, playerId }: ProfilePageProps) {
               </p>
             )}
             <p className="text-xs text-muted-foreground font-mono truncate mt-0.5">
-              {principal ? `${principal.slice(0, 20)}...` : "—"}
+              {displayId}
             </p>
-            {player?.referredBy && (
-              <p className="text-xs text-primary mt-1">
-                Referred by: {player.referredBy}
-              </p>
-            )}
           </div>
         </div>
 
@@ -522,8 +522,7 @@ export default function ProfilePage({ navigate, playerId }: ProfilePageProps) {
                 </DialogHeader>
                 <div className="space-y-4">
                   <p className="text-xs text-muted-foreground">
-                    Upload your documents to verify your identity. Files are
-                    stored securely on your device.
+                    Upload your documents to verify your identity.
                   </p>
                   <div className="space-y-1.5">
                     <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
@@ -615,8 +614,7 @@ export default function ProfilePage({ navigate, playerId }: ProfilePageProps) {
 
         {kycStatus === "verified" && (
           <p className="text-xs text-green-400">
-            ✅ Your identity has been verified. Enjoy full access to all
-            platform features!
+            ✅ Your identity has been verified. Enjoy full access!
           </p>
         )}
 
@@ -806,7 +804,7 @@ export default function ProfilePage({ navigate, playerId }: ProfilePageProps) {
       <Button
         variant="outline"
         className="w-full border-destructive/30 text-destructive hover:bg-destructive/10"
-        onClick={clear}
+        onClick={onSignOut}
         data-ocid="profile.logout.button"
       >
         Logout

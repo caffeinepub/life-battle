@@ -7,9 +7,11 @@ import {
   Lock,
   Swords,
   Trophy,
+  X,
   Zap,
 } from "lucide-react";
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
+import { useState } from "react";
 import type { AppNav } from "../App";
 import { MatchStatus, MatchType } from "../backend.d";
 import { useGetMatches, useGetPlayerDetails } from "../hooks/useQueries";
@@ -34,6 +36,8 @@ export default function HomePage({ navigate, playerId }: HomePageProps) {
       (m) =>
         m.matchType === MatchType.paid && m.status === MatchStatus.upcoming,
     ).length ?? 0;
+  const [showPromo, setShowPromo] = useState(true);
+
   const ongoingMatches =
     matches?.filter((m) => m.status === MatchStatus.ongoing) ?? [];
 
@@ -90,6 +94,47 @@ export default function HomePage({ navigate, playerId }: HomePageProps) {
         <div className="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-primary/10 blur-2xl" />
         <div className="absolute -left-4 -bottom-4 w-20 h-20 rounded-full bg-accent/10 blur-2xl" />
       </motion.div>
+
+      {/* Promo Banner */}
+      <AnimatePresence>
+        {showPromo && (
+          <motion.div
+            initial={{ opacity: 0, y: -10, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -10, scale: 0.97 }}
+            transition={{ duration: 0.3 }}
+            className="relative overflow-hidden rounded-2xl border border-yellow-500/40 bg-gradient-to-r from-yellow-500/15 via-orange-500/10 to-yellow-500/15 p-4"
+            data-ocid="home.promo.banner"
+            style={{ boxShadow: "0 0 18px 2px rgba(234,179,8,0.13)" }}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                <span className="text-xl flex-shrink-0">🏆</span>
+                <div>
+                  <p className="font-heading font-black text-sm text-yellow-300 leading-tight">
+                    Weekend Battle Tournament
+                  </p>
+                  <p className="text-[11px] text-yellow-200/70 mt-0.5">
+                    Join Now &amp; Win Big! Top prizes await the best players.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPromo(false)}
+                className="flex-shrink-0 w-6 h-6 rounded-full bg-yellow-500/20 hover:bg-yellow-500/40 flex items-center justify-center text-yellow-300 transition-colors"
+                data-ocid="home.promo.close_button"
+                aria-label="Dismiss promotion"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            {/* Glow orbs */}
+            <div className="absolute -right-4 -top-4 w-20 h-20 rounded-full bg-yellow-400/10 blur-2xl pointer-events-none" />
+            <div className="absolute -left-4 -bottom-4 w-16 h-16 rounded-full bg-orange-400/10 blur-2xl pointer-events-none" />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Ongoing matches alert */}
       {ongoingMatches.length > 0 && (

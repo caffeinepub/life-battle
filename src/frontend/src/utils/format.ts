@@ -1,12 +1,12 @@
 import { MatchStatus, MatchSubType } from "../backend.d";
 
 /**
- * Format bigint amount (in paise/cents) to ₹ display
- * e.g. 10000n → ₹100.00
+ * Format bigint amount (in paise) to gold coin display
+ * e.g. 10000n → 🪙100
  */
 export function formatAmount(amount: bigint): string {
   const num = Number(amount) / 100;
-  return `₹${num.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  return `🪙${num.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
 /**
@@ -41,21 +41,21 @@ export function getStatusLabel(status: MatchStatus): string {
 export function getSubTypeLabel(subType: MatchSubType): string {
   switch (subType) {
     case MatchSubType.survival:
-      return "Survival";
+      return "SURVIVAL SOLO";
     case MatchSubType.perKill:
-      return "Per Kill";
+      return "PER KILL";
     case MatchSubType.lossToWin:
-      return "Loss to Win";
+      return "LW LOSS FIRST";
     case MatchSubType.lonewolf1v1:
-      return "Lonewolf 1v1";
+      return "LW 1 VS 1";
     case MatchSubType.lonewolf2v2:
-      return "Lonewolf 2v2";
+      return "LW 2 VS 2";
     case MatchSubType.cs1v1:
-      return "CS 1v1";
+      return "CS 1 VS 1";
     case MatchSubType.cs2v2:
-      return "CS 2v2";
+      return "CS 2 VS 2";
     case MatchSubType.cs4v4:
-      return "CS 4v4";
+      return "CS 4 VS 4";
     default:
       return subType;
   }

@@ -19,14 +19,17 @@ interface MatchListPageProps {
 }
 
 const SUB_TYPES = [
-  MatchSubType.survival,
-  MatchSubType.perKill,
-  MatchSubType.lossToWin,
-  MatchSubType.lonewolf1v1,
-  MatchSubType.lonewolf2v2,
-  MatchSubType.cs1v1,
-  MatchSubType.cs2v2,
-  MatchSubType.cs4v4,
+  { type: MatchSubType.survival, color: "from-orange-600/80 to-orange-900/60" },
+  { type: MatchSubType.lonewolf1v1, color: "from-blue-600/80 to-blue-900/60" },
+  {
+    type: MatchSubType.lonewolf2v2,
+    color: "from-green-600/80 to-green-900/60",
+  },
+  { type: MatchSubType.cs4v4, color: "from-red-600/80 to-red-900/60" },
+  { type: MatchSubType.cs1v1, color: "from-purple-600/80 to-purple-900/60" },
+  { type: MatchSubType.cs2v2, color: "from-gray-500/80 to-gray-800/60" },
+  { type: MatchSubType.lossToWin, color: "from-pink-600/80 to-pink-900/60" },
+  { type: MatchSubType.perKill, color: "from-yellow-600/80 to-yellow-900/60" },
 ];
 
 const STATUS_TABS = [
@@ -35,13 +38,15 @@ const STATUS_TABS = [
   { value: MatchStatus.completed, label: "Results" },
 ];
 
+const CARD_ART = "/assets/generated/ff-card-art.dim_300x300.jpg";
+
 export default function MatchListPage({
   type,
   navigate,
   playerId,
 }: MatchListPageProps) {
-  const [selectedSubType, setSelectedSubType] = useState<MatchSubType>(
-    MatchSubType.survival,
+  const [selectedSubType, setSelectedSubType] = useState<MatchSubType | null>(
+    null,
   );
   const [statusFilter, setStatusFilter] = useState<MatchStatus>(
     MatchStatus.upcoming,
@@ -53,11 +58,6 @@ export default function MatchListPage({
   const joinMatch = useJoinMatch();
 
   const matchType = type === "free" ? MatchType.free : MatchType.paid;
-
-  const filtered = (matches ?? [])
-    .filter((m) => m.matchType === matchType)
-    .filter((m) => m.matchSubType === selectedSubType)
-    .filter((m) => m.status === statusFilter);
 
   const handleJoin = async (matchId: number) => {
     setJoiningId(matchId);
@@ -79,38 +79,107 @@ export default function MatchListPage({
       : []) ?? [],
   );
 
+  // ── Category grid view ──
+  if (!selectedSubType) {
+    return (
+      <div className="p-4 space-y-4">
+        <div>
+          <h2 className="font-heading font-black text-xl text-foreground">
+            {type === "free" ? "Free Matches" : "Paid Matches"}
+          </h2>
+          <p className="text-xs text-muted-foreground">Select match type</p>
+        </div>
+
+        <div className="grid grid-cols-3 gap-3">
+          {SUB_TYPES.map(({ type: st, color }, idx) => {
+            const allOfType = (matches ?? []).filter(
+              (m) => m.matchType === matchType && m.matchSubType === st,
+            );
+            const liveCount = allOfType.filter(
+              (m) => m.status === MatchStatus.ongoing,
+            ).length;
+            const upcomingCount = allOfType.filter(
+              (m) => m.status === MatchStatus.upcoming,
+            ).length;
+            const count = liveCount + upcomingCount;
+            const isLive = liveCount > 0;
+
+            return (
+              <motion.button
+                key={st}
+                type="button"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: idx * 0.05 }}
+                onClick={() => setSelectedSubType(st)}
+                className="relative rounded-xl overflow-hidden aspect-square native-tap focus:outline-none"
+                data-ocid={`matches.${st}.tab`}
+              >
+                {/* Background art */}
+                <img
+                  src={CARD_ART}
+                  alt={getSubTypeLabel(st)}
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+                {/* Color overlay */}
+                <div
+                  className={`absolute inset-0 bg-gradient-to-br ${color} mix-blend-multiply`}
+                />
+                {/* Dark bottom gradient for label */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+
+                {/* Player count badge */}
+                <div className="absolute top-1.5 right-1.5 flex items-center gap-0.5 bg-black/60 rounded-full px-1.5 py-0.5">
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      isLive ? "bg-green-400" : "bg-red-500"
+                    }`}
+                  />
+                  <span className="text-white text-[10px] font-bold font-mono">
+                    {count}
+                  </span>
+                </div>
+
+                {/* Label */}
+                <div className="absolute bottom-0 inset-x-0 p-1.5">
+                  <p className="text-white font-heading font-black text-[10px] leading-tight text-center uppercase">
+                    {getSubTypeLabel(st)}
+                  </p>
+                </div>
+              </motion.button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Match list for selected sub-type ──
+  const filtered = (matches ?? [])
+    .filter((m) => m.matchType === matchType)
+    .filter((m) => m.matchSubType === selectedSubType)
+    .filter((m) => m.status === statusFilter);
+
   return (
     <div className="p-4 space-y-4">
-      {/* Header */}
-      <div>
-        <h2 className="font-heading font-black text-xl text-foreground">
-          {type === "free" ? "Free Matches" : "Paid Matches"}
-        </h2>
-        <p className="text-xs text-muted-foreground">
-          {filtered.length} match{filtered.length !== 1 ? "es" : ""} found
-        </p>
-      </div>
-
-      {/* Sub-type tabs (horizontal scroll) */}
-      <div
-        className="flex gap-2 overflow-x-auto scrollbar-hide pb-1"
-        data-ocid="matches.subtype.tab"
-      >
-        {SUB_TYPES.map((st) => (
-          <button
-            type="button"
-            key={st}
-            onClick={() => setSelectedSubType(st)}
-            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-mono font-semibold transition-all ${
-              selectedSubType === st
-                ? "bg-primary text-primary-foreground glow-orange"
-                : "bg-card border border-border text-muted-foreground hover:border-primary/30"
-            }`}
-            data-ocid={`matches.${st}.tab`}
-          >
-            {getSubTypeLabel(st)}
-          </button>
-        ))}
+      {/* Header with back button */}
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setSelectedSubType(null)}
+          className="text-muted-foreground hover:text-foreground transition-colors font-mono text-sm"
+          data-ocid="matches.back.button"
+        >
+          ← Back
+        </button>
+        <div>
+          <h2 className="font-heading font-black text-xl text-foreground">
+            {getSubTypeLabel(selectedSubType)}
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            {filtered.length} match{filtered.length !== 1 ? "es" : ""} found
+          </p>
+        </div>
       </div>
 
       {/* Status tabs */}

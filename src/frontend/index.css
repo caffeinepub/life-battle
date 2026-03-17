@@ -90,6 +90,7 @@
     color-scheme: dark;
     height: 100%;
     overflow: hidden;
+    overscroll-behavior: none;
   }
 
   body {
@@ -107,6 +108,12 @@
   #root {
     height: 100dvh;
     overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  /* Prevent pull-to-refresh on all scrollable containers */
+  * {
+    overscroll-behavior: none;
   }
 
   h1, h2, h3, h4, h5, h6 {

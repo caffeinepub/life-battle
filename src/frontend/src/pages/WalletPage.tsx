@@ -15,15 +15,12 @@ import {
   ArrowDownCircle,
   ArrowUpCircle,
   CheckCircle2,
-  Clock,
   Copy,
   Loader2,
-  RefreshCw,
   Swords,
   Target,
   Trophy,
   Wallet,
-  XCircle,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -42,8 +39,6 @@ import { formatAmount, formatDate } from "../utils/format";
 
 const DEPOSIT_AMOUNTS = [10, 50, 100, 200, 500];
 const UPI_ID = "6280048307@fam";
-const QR_IMAGE = "/assets/uploads/file_00000000efd071fa89ce6e365bcb68fe-1.png";
-const TIMER_SECONDS = 3 * 60; // 3 minutes
 const WITHDRAW_MIN = 50;
 const WITHDRAW_MAX = 500;
 
@@ -69,57 +64,7 @@ function StatusBadge({
   );
 }
 
-function CountdownTimer({
-  onExpire,
-}: {
-  onExpire: () => void;
-}) {
-  const [seconds, setSeconds] = useState(TIMER_SECONDS);
-  const onExpireRef = useRef(onExpire);
-  onExpireRef.current = onExpire;
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setSeconds((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          onExpireRef.current();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const mm = String(Math.floor(seconds / 60)).padStart(2, "0");
-  const ss = String(seconds % 60).padStart(2, "0");
-  const pct = (seconds / TIMER_SECONDS) * 100;
-  const isUrgent = seconds <= 30;
-
-  return (
-    <div
-      className={cn("flex items-center gap-2", isUrgent && "text-destructive")}
-    >
-      <Clock className="h-4 w-4" />
-      <span className="font-mono font-bold text-sm">
-        {mm}:{ss}
-      </span>
-      <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
-        <div
-          className={cn(
-            "h-full rounded-full transition-all",
-            isUrgent ? "bg-destructive" : "bg-primary",
-          )}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      <span className="text-[10px] text-muted-foreground">QR valid for</span>
-    </div>
-  );
-}
-
-type DepositStep = "amount" | "qr" | "success";
+type DepositStep = "amount" | "upload" | "success";
 type WithdrawStep = "form" | "success";
 
 interface WalletPageProps {
@@ -143,14 +88,11 @@ export default function WalletPage({
   const submitDeposit = useSubmitDepositRequest();
   const submitWithdraw = useSubmitWithdrawRequest();
 
-  // Deposit state
   const [depositOpen, setDepositOpen] = useState(false);
   const [depositStep, setDepositStep] = useState<DepositStep>("amount");
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
   const [transactionId, setTransactionId] = useState("");
-  const [qrExpired, setQrExpired] = useState(false);
 
-  // Withdraw state
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [withdrawStep, setWithdrawStep] = useState<WithdrawStep>("form");
   const [withdrawUpi, setWithdrawUpi] = useState("");
@@ -169,7 +111,6 @@ export default function WalletPage({
     setDepositStep("amount");
     setSelectedAmount(null);
     setTransactionId("");
-    setQrExpired(false);
   }, []);
 
   const handleDepositClose = (open: boolean) => {
@@ -210,16 +151,16 @@ export default function WalletPage({
       return;
     }
     if (!amt || amt < WITHDRAW_MIN) {
-      toast.error(`Minimum withdrawal amount is ₹${WITHDRAW_MIN}`);
+      toast.error(`Minimum withdrawal amount is 🪙${WITHDRAW_MIN}`);
       return;
     }
     if (amt > WITHDRAW_MAX) {
-      toast.error(`Maximum withdrawal amount is ₹${WITHDRAW_MAX}`);
+      toast.error(`Maximum withdrawal amount is 🪙${WITHDRAW_MAX}`);
       return;
     }
     const winBal = Number(player?.winningBalance ?? 0n);
     if (amt > winBal) {
-      toast.error(`Amount exceeds winning balance (₹${winBal})`);
+      toast.error(`Amount exceeds winning balance (🪙${winBal})`);
       return;
     }
     try {
@@ -259,7 +200,7 @@ export default function WalletPage({
               <Skeleton className="h-10 w-36" />
             ) : (
               <p className="font-heading font-black text-4xl text-foreground">
-                ₹{String(player?.walletBalance ?? 0n)}
+                🪙{String(player?.walletBalance ?? 0n)}
               </p>
             )}
           </div>
@@ -270,7 +211,7 @@ export default function WalletPage({
                 Winning Balance
               </p>
               <p className="font-mono font-bold text-green-400 text-base">
-                ₹{String(player?.winningBalance ?? 0n)}
+                🪙{String(player?.winningBalance ?? 0n)}
               </p>
             </div>
             <div className="flex-1 rounded-xl bg-card/50 border border-border/60 p-3">
@@ -290,6 +231,10 @@ export default function WalletPage({
               </p>
             </div>
           </div>
+
+          <p className="text-[10px] text-muted-foreground text-center">
+            🪙 1 Gold Coin = ₹1
+          </p>
 
           <div className="flex gap-3">
             <Button
@@ -389,7 +334,7 @@ export default function WalletPage({
             className="text-center py-10 text-muted-foreground"
             data-ocid="wallet.empty_state"
           >
-            <div className="text-4xl mb-3">💰</div>
+            <div className="text-4xl mb-3">🪙</div>
             <p className="font-heading font-bold">No transactions yet</p>
             <p className="text-sm mt-1">Join matches to start earning!</p>
           </div>
@@ -473,7 +418,7 @@ export default function WalletPage({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
                     <p className="font-mono font-bold text-sm text-foreground">
-                      ₹{String(req.amount)}
+                      🪙{String(req.amount)}
                     </p>
                     <StatusBadge status={req.status} />
                   </div>
@@ -520,7 +465,7 @@ export default function WalletPage({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
                     <p className="font-mono font-bold text-sm text-foreground">
-                      ₹{String(req.amount)}
+                      🪙{String(req.amount)}
                     </p>
                     <StatusBadge status={req.status} />
                   </div>
@@ -539,9 +484,7 @@ export default function WalletPage({
         )}
       </section>
 
-      {/* ══════════════════════════════════════════ */}
       {/* DEPOSIT DIALOG */}
-      {/* ══════════════════════════════════════════ */}
       <Dialog open={depositOpen} onOpenChange={handleDepositClose}>
         <DialogContent
           className="bg-card border-border max-w-sm mx-auto"
@@ -552,9 +495,7 @@ export default function WalletPage({
               Deposit Funds
             </DialogTitle>
           </DialogHeader>
-
           <AnimatePresence mode="wait">
-            {/* Step 1: Select Amount */}
             {depositStep === "amount" && (
               <motion.div
                 key="amount"
@@ -564,7 +505,7 @@ export default function WalletPage({
                 className="space-y-4"
               >
                 <p className="text-sm text-muted-foreground">
-                  Select deposit amount:
+                  Select deposit amount (1 🪙 = ₹1):
                 </p>
                 <div className="grid grid-cols-3 gap-2">
                   {DEPOSIT_AMOUNTS.map((amt) => (
@@ -578,9 +519,9 @@ export default function WalletPage({
                           ? "border-primary bg-primary/20 text-primary glow-orange"
                           : "border-border bg-card/50 text-foreground hover:border-primary/50",
                       )}
-                      data-ocid={"wallet.deposit.amount.button"}
+                      data-ocid="wallet.deposit.amount.button"
                     >
-                      ₹{amt}
+                      🪙{amt}
                     </button>
                   ))}
                 </div>
@@ -588,8 +529,7 @@ export default function WalletPage({
                   className="w-full h-11 bg-primary text-primary-foreground font-heading font-bold"
                   disabled={!selectedAmount}
                   onClick={() => {
-                    setQrExpired(false);
-                    setDepositStep("qr");
+                    setDepositStep("upload");
                   }}
                   data-ocid="wallet.deposit.next.button"
                 >
@@ -597,129 +537,75 @@ export default function WalletPage({
                 </Button>
               </motion.div>
             )}
-
-            {/* Step 2: QR Code + Timer */}
-            {depositStep === "qr" && (
+            {depositStep === "upload" && (
               <motion.div
-                key="qr"
+                key="upload"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 className="space-y-4"
               >
-                {/* Timer */}
-                {!qrExpired ? (
-                  <CountdownTimer onExpire={() => setQrExpired(true)} />
-                ) : (
-                  <div
-                    className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-center"
-                    data-ocid="wallet.deposit.error_state"
-                  >
-                    <XCircle className="h-6 w-6 text-destructive mx-auto mb-1" />
-                    <p className="text-sm font-heading font-bold text-destructive">
-                      QR Expired
-                    </p>
-                    <p className="text-xs text-muted-foreground mb-2">
-                      The payment window has expired. Please restart.
-                    </p>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="border-destructive/40 text-destructive"
-                      onClick={() => {
-                        setQrExpired(false);
-                        setDepositStep("amount");
-                        setSelectedAmount(null);
-                        setTransactionId("");
-                      }}
-                      data-ocid="wallet.deposit.retry.button"
+                <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 text-center">
+                  <p className="text-xs text-muted-foreground mb-1">
+                    Send{" "}
+                    <span className="text-primary font-bold">
+                      🪙{selectedAmount}
+                    </span>{" "}
+                    (₹{selectedAmount}) to this UPI ID:
+                  </p>
+                  <div className="flex items-center justify-center gap-2 mt-1">
+                    <span className="font-mono text-sm font-bold text-foreground">
+                      {UPI_ID}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={copyUpi}
+                      className="text-muted-foreground hover:text-primary transition-colors"
+                      data-ocid="wallet.deposit.copy.button"
                     >
-                      <RefreshCw className="h-3.5 w-3.5 mr-1" />
-                      Restart
-                    </Button>
+                      <Copy className="h-3.5 w-3.5" />
+                    </button>
                   </div>
-                )}
-
-                {!qrExpired && (
-                  <>
-                    <div className="text-center">
-                      <p className="text-xs text-muted-foreground mb-3">
-                        Pay{" "}
-                        <span className="text-primary font-bold">
-                          ₹{selectedAmount}
-                        </span>{" "}
-                        by scanning this QR
-                      </p>
-                      {/* QR Code */}
-                      <div className="inline-block p-2 bg-white rounded-xl border border-border">
-                        <img
-                          src={QR_IMAGE}
-                          alt="UPI QR Code"
-                          className="w-44 h-44 object-contain"
-                        />
-                      </div>
-                      {/* UPI ID */}
-                      <div className="mt-3 flex items-center justify-center gap-2">
-                        <span className="font-mono text-sm text-foreground font-bold">
-                          {UPI_ID}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={copyUpi}
-                          className="text-muted-foreground hover:text-primary transition-colors"
-                          data-ocid="wallet.deposit.copy.button"
-                        >
-                          <Copy className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </div>
-
-                    <Separator />
-
-                    <div className="space-y-3">
-                      <p className="text-xs text-muted-foreground">
-                        Complete payment and fill details below:
-                      </p>
-                      <div className="space-y-1.5">
-                        <Label
-                          htmlFor="txn-id"
-                          className="text-xs font-body text-muted-foreground"
-                        >
-                          UPI Transaction ID *
-                        </Label>
-                        <Input
-                          id="txn-id"
-                          placeholder="e.g. 4123456789012345"
-                          value={transactionId}
-                          onChange={(e) => setTransactionId(e.target.value)}
-                          className="bg-card border-border font-mono text-sm"
-                          data-ocid="wallet.deposit.txn.input"
-                        />
-                      </div>
-                      <Button
-                        className="w-full h-11 bg-primary text-primary-foreground font-heading font-bold"
-                        onClick={handleDepositSubmit}
-                        disabled={
-                          submitDeposit.isPending || !transactionId.trim()
-                        }
-                        data-ocid="wallet.deposit.submit.button"
-                      >
-                        {submitDeposit.isPending ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Submitting...
-                          </>
-                        ) : (
-                          "Submit Deposit Request"
-                        )}
-                      </Button>
-                    </div>
-                  </>
-                )}
+                </div>
+                <Separator />
+                <div className="space-y-3">
+                  <p className="text-xs text-muted-foreground">
+                    After payment, enter your UPI Transaction ID below:
+                  </p>
+                  <div className="space-y-1.5">
+                    <Label
+                      htmlFor="txn-id"
+                      className="text-xs font-body text-muted-foreground"
+                    >
+                      UPI Transaction ID *
+                    </Label>
+                    <Input
+                      id="txn-id"
+                      placeholder="e.g. 4123456789012345"
+                      value={transactionId}
+                      onChange={(e) => setTransactionId(e.target.value)}
+                      className="bg-card border-border font-mono text-sm"
+                      data-ocid="wallet.deposit.txn.input"
+                    />
+                  </div>
+                  <Button
+                    className="w-full h-11 bg-primary text-primary-foreground font-heading font-bold"
+                    onClick={handleDepositSubmit}
+                    disabled={submitDeposit.isPending || !transactionId.trim()}
+                    data-ocid="wallet.deposit.submit.button"
+                  >
+                    {submitDeposit.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Submitting...
+                      </>
+                    ) : (
+                      "Submit Deposit Request"
+                    )}
+                  </Button>
+                </div>
               </motion.div>
             )}
-
-            {/* Step 3: Success */}
             {depositStep === "success" && (
               <motion.div
                 key="success"
@@ -748,9 +634,7 @@ export default function WalletPage({
         </DialogContent>
       </Dialog>
 
-      {/* ══════════════════════════════════════════ */}
       {/* WITHDRAW DIALOG */}
-      {/* ══════════════════════════════════════════ */}
       <Dialog open={withdrawOpen} onOpenChange={handleWithdrawClose}>
         <DialogContent
           className="bg-card border-border max-w-sm mx-auto"
@@ -761,7 +645,6 @@ export default function WalletPage({
               Withdraw Funds
             </DialogTitle>
           </DialogHeader>
-
           <AnimatePresence mode="wait">
             {withdrawStep === "form" && (
               <motion.div
@@ -776,10 +659,9 @@ export default function WalletPage({
                     Winning Balance (available to withdraw)
                   </p>
                   <p className="font-mono font-black text-xl text-green-400">
-                    ₹{String(player?.winningBalance ?? 0n)}
+                    🪙{String(player?.winningBalance ?? 0n)}
                   </p>
                 </div>
-
                 <div className="space-y-1.5">
                   <Label
                     htmlFor="upi-id"
@@ -796,13 +678,12 @@ export default function WalletPage({
                     data-ocid="wallet.withdraw.upi.input"
                   />
                 </div>
-
                 <div className="space-y-1.5">
                   <Label
                     htmlFor="withdraw-amount"
                     className="text-xs font-body text-muted-foreground"
                   >
-                    Amount (₹) *
+                    Amount (Gold Coins) *
                   </Label>
                   <Input
                     id="withdraw-amount"
@@ -814,11 +695,10 @@ export default function WalletPage({
                     data-ocid="wallet.withdraw.amount.input"
                   />
                   <p className="text-[10px] text-muted-foreground">
-                    Min: ₹{WITHDRAW_MIN} · Max: ₹{WITHDRAW_MAX} (winning balance
-                    only)
+                    Min: 🪙{WITHDRAW_MIN} · Max: 🪙{WITHDRAW_MAX} (winning
+                    balance only)
                   </p>
                 </div>
-
                 <Button
                   className="w-full h-11 bg-green-600 hover:bg-green-700 text-white font-heading font-bold"
                   onClick={handleWithdrawSubmit}
@@ -836,7 +716,6 @@ export default function WalletPage({
                 </Button>
               </motion.div>
             )}
-
             {withdrawStep === "success" && (
               <motion.div
                 key="success"

@@ -2,6 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { Crown, Medal, Swords, Trophy } from "lucide-react";
 import { motion } from "motion/react";
+import { Component, type ReactNode } from "react";
 import type { AppNav } from "../App";
 import { useGetLeaderboard } from "../hooks/useQueries";
 import { formatPlayerId } from "../utils/playerId";
@@ -33,9 +34,38 @@ const RankIcon = ({ rank }: { rank: number }) => {
   );
 };
 
-export default function LeaderboardPage({
-  navigate: _navigate,
-}: LeaderboardPageProps) {
+class LeaderboardErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+          <div className="text-5xl mb-4">🏆</div>
+          <h3 className="font-heading font-bold text-lg text-foreground mb-2">
+            Leaderboard Unavailable
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            Could not load leaderboard. Please try again later.
+          </p>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function LeaderboardContent({ navigate: _navigate }: LeaderboardPageProps) {
   const { data: leaderboard, isLoading } = useGetLeaderboard();
 
   return (
@@ -251,5 +281,13 @@ export default function LeaderboardPage({
         </div>
       )}
     </div>
+  );
+}
+
+export default function LeaderboardPage(props: LeaderboardPageProps) {
+  return (
+    <LeaderboardErrorBoundary>
+      <LeaderboardContent {...props} />
+    </LeaderboardErrorBoundary>
   );
 }

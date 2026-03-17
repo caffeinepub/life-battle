@@ -1,15 +1,12 @@
 import { Toaster } from "@/components/ui/sonner";
-import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useInternetIdentity } from "./hooks/useInternetIdentity";
-import { useGetCallerProfile } from "./hooks/useQueries";
+import { FirebaseAuthProvider, useFirebaseAuth } from "./hooks/useFirebaseAuth";
+import { useFirebaseProfile } from "./hooks/useFirebaseProfile";
 
-import AdminLoginPage from "./pages/AdminLoginPage";
 import AnnouncementsPage, { getAnnouncements } from "./pages/AnnouncementsPage";
 import HomePage from "./pages/HomePage";
 import LeaderboardPage from "./pages/LeaderboardPage";
-// Player pages
 import LoginPage from "./pages/LoginPage";
 import MatchDetailPage from "./pages/MatchDetailPage";
 import MatchHistoryPage from "./pages/MatchHistoryPage";
@@ -17,14 +14,7 @@ import MatchListPage from "./pages/MatchListPage";
 import ProfilePage from "./pages/ProfilePage";
 import WalletPage from "./pages/WalletPage";
 
-import AdminCreateMatchPage from "./pages/admin/AdminCreateMatchPage";
-// Admin pages
-import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
-import AdminEditMatchPage from "./pages/admin/AdminEditMatchPage";
-import AdminPlayerManagementPage from "./pages/admin/AdminPlayerManagementPage";
-
 import AppHeader from "./components/AppHeader";
-// Layout
 import BottomNav from "./components/BottomNav";
 
 export type PlayerPage =
@@ -44,7 +34,6 @@ export type AdminPage =
   | "admin-create"
   | "admin-edit"
   | "admin-players";
-
 export type AppPage = PlayerPage | AdminPage;
 
 export type AppNav = {
@@ -52,19 +41,31 @@ export type AppNav = {
   matchId?: number;
 };
 
+// Pages that are top-level tabs — back button on these should exit/close the app
+const TAB_PAGES: AppPage[] = [
+  "home",
+  "free-matches",
+  "paid-matches",
+  "announcements",
+  "leaderboard",
+  "profile",
+  "wallet",
+];
+
 const pageVariants = {
   initial: { opacity: 0, x: 18 },
   animate: { opacity: 1, x: 0 },
   exit: { opacity: 0, x: -18 },
 };
 
-// Max time to wait for profile load before giving up (ms)
-const PROFILE_LOAD_TIMEOUT = 8000;
+function AppInner() {
+  const { user, isLoading: authLoading, signOut } = useFirebaseAuth();
+  const { profile, isLoading: profileLoading } = useFirebaseProfile(user?.uid);
 
-export default function App() {
-  const { identity, isInitializing } = useInternetIdentity();
   const [nav, setNav] = useState<AppNav>({ page: "home" });
-  const [isAdminMode, setIsAdminMode] = useState(false);
+  const navStackRef = useRef<AppNav[]>([{ page: "home" }]);
+  const isPopstateRef = useRef(false);
+
   const [announcementCount, setAnnouncementCount] = useState(() => {
     const lastSeen = Number.parseInt(
       localStorage.getItem("lb_announcements_last_seen") ?? "0",
@@ -72,36 +73,42 @@ export default function App() {
     );
     return getAnnouncements().filter((a) => a.createdAt > lastSeen).length;
   });
-  const queryClient = useQueryClient();
 
-  // Timeout fallback: if profile loading takes too long, treat as no profile
-  const [profileTimedOut, setProfileTimedOut] = useState(false);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const isLoggedIn = !!identity && !identity.getPrincipal().isAnonymous();
-
-  // Only fetch profile when actually logged in
-  const { data: profile, isLoading: profileLoading } = useGetCallerProfile();
-
-  // Start timeout when logged in and loading begins
+  // Seed one history entry so popstate can fire
   useEffect(() => {
-    if (isLoggedIn && profileLoading && !profileTimedOut) {
-      timeoutRef.current = setTimeout(() => {
-        setProfileTimedOut(true);
-      }, PROFILE_LOAD_TIMEOUT);
-    } else if (!profileLoading) {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-      }
-      setProfileTimedOut(false);
-    }
-    return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    };
-  }, [isLoggedIn, profileLoading, profileTimedOut]);
+    window.history.replaceState({ lb: true }, "");
+  }, []);
 
-  // Listen for storage changes (e.g. admin posts announcement on same device)
+  // Handle Android/browser back button
+  useEffect(() => {
+    const onPopstate = () => {
+      const stack = navStackRef.current;
+      if (stack.length <= 1) {
+        // Nothing to pop — let the browser handle it (closes app / goes back in browser)
+        return;
+      }
+      // Pop the current page and go to the previous one
+      isPopstateRef.current = true;
+      const newStack = stack.slice(0, -1);
+      navStackRef.current = newStack;
+      setNav(newStack[newStack.length - 1]);
+      // Re-push a history entry so the next back press still fires popstate
+      window.history.pushState({ lb: true }, "");
+    };
+    window.addEventListener("popstate", onPopstate);
+    return () => window.removeEventListener("popstate", onPopstate);
+  }, []);
+
+  // After login, go to home
+  const prevUserRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (user?.uid && prevUserRef.current === null) {
+      setNav({ page: "home" });
+      navStackRef.current = [{ page: "home" }];
+    }
+    prevUserRef.current = user?.uid ?? null;
+  }, [user?.uid]);
+
   useEffect(() => {
     const handler = () => {
       const lastSeen = Number.parseInt(
@@ -116,16 +123,31 @@ export default function App() {
     return () => window.removeEventListener("storage", handler);
   }, []);
 
-  // Stable callback to reset announcement badge
   const handleAnnouncementsViewed = useCallback(
     () => setAnnouncementCount(0),
     [],
   );
 
-  const navigate = (navState: AppNav) => setNav(navState);
+  const navigate = useCallback((navState: AppNav) => {
+    if (isPopstateRef.current) {
+      isPopstateRef.current = false;
+      return;
+    }
+    const isTabPage = TAB_PAGES.includes(navState.page);
+    if (isTabPage) {
+      // Tab-level navigation: replace the current stack entry
+      navStackRef.current = [navState];
+      window.history.replaceState({ lb: true }, "");
+    } else {
+      // Deep navigation: push onto the stack
+      navStackRef.current = [...navStackRef.current, navState];
+      window.history.pushState({ lb: true }, "");
+    }
+    setNav(navState);
+  }, []);
 
-  // Show spinner only during Internet Identity initialization
-  if (isInitializing) {
+  // Auth initializing
+  if (authLoading) {
     return (
       <div className="min-h-[100dvh] bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
@@ -139,7 +161,7 @@ export default function App() {
   }
 
   // Not logged in → login page
-  if (!isLoggedIn) {
+  if (!user) {
     return (
       <div className="min-h-[100dvh] bg-background hero-pattern">
         <LoginPage onLoginSuccess={() => {}} />
@@ -148,8 +170,8 @@ export default function App() {
     );
   }
 
-  // Logged in but profile still loading (with timeout fallback)
-  if (profileLoading && !profileTimedOut) {
+  // Profile still loading
+  if (profileLoading) {
     return (
       <div className="min-h-[100dvh] bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
@@ -162,7 +184,7 @@ export default function App() {
     );
   }
 
-  // Logged in but no profile → registration
+  // Logged in but no profile yet → registration
   if (!profile) {
     return (
       <div className="min-h-[100dvh] bg-background hero-pattern">
@@ -173,68 +195,6 @@ export default function App() {
   }
 
   const playerId = profile.playerId;
-
-  // Admin login page — full-screen, no chrome
-  if (nav.page === "admin-login") {
-    return (
-      <div className="min-h-[100dvh] bg-background">
-        <AdminLoginPage
-          onAdminLoginSuccess={() => {
-            queryClient.invalidateQueries({ queryKey: ["matches"] });
-            queryClient.invalidateQueries({ queryKey: ["depositRequests"] });
-            queryClient.invalidateQueries({ queryKey: ["withdrawRequests"] });
-            queryClient.invalidateQueries({ queryKey: ["adminDashboard"] });
-            setIsAdminMode(true);
-            navigate({ page: "admin-dashboard" });
-          }}
-          onCancel={() => navigate({ page: "home" })}
-        />
-        <Toaster richColors theme="dark" />
-      </div>
-    );
-  }
-
-  // Admin mode — gated only by frontend credentials check
-  if (isAdminMode) {
-    return (
-      <div className="min-h-[100dvh] bg-background overflow-hidden">
-        <div className="max-w-[430px] mx-auto min-h-[100dvh] flex flex-col relative">
-          <AppHeader
-            title="Life Battle — Admin"
-            isAdmin
-            onBack={
-              nav.page !== "admin-dashboard"
-                ? () => navigate({ page: "admin-dashboard" })
-                : undefined
-            }
-            onExitAdmin={() => {
-              setIsAdminMode(false);
-              navigate({ page: "home" });
-              queryClient.invalidateQueries({ queryKey: ["matches"] });
-            }}
-          />
-          <main
-            className="flex-1 overflow-y-auto pb-6"
-            style={{ paddingTop: "56px" }}
-          >
-            {nav.page === "admin-dashboard" && (
-              <AdminDashboardPage navigate={navigate} />
-            )}
-            {nav.page === "admin-create" && (
-              <AdminCreateMatchPage navigate={navigate} />
-            )}
-            {nav.page === "admin-edit" && nav.matchId !== undefined && (
-              <AdminEditMatchPage matchId={nav.matchId} navigate={navigate} />
-            )}
-            {nav.page === "admin-players" && (
-              <AdminPlayerManagementPage navigate={navigate} />
-            )}
-          </main>
-        </div>
-        <Toaster richColors theme="dark" />
-      </div>
-    );
-  }
 
   // Player mode
   const bottomNavPages: PlayerPage[] = [
@@ -249,6 +209,9 @@ export default function App() {
   ];
   const showBottomNav = bottomNavPages.includes(nav.page as PlayerPage);
 
+  const canGoBack =
+    navStackRef.current.length > 1 && !TAB_PAGES.includes(nav.page);
+
   return (
     <div className="bg-background overflow-hidden" style={{ height: "100dvh" }}>
       <div
@@ -258,16 +221,15 @@ export default function App() {
         <AppHeader
           title={getPageTitle(nav.page)}
           onBack={
-            nav.page !== "home" &&
-            ![
-              "free-matches",
-              "paid-matches",
-              "announcements",
-              "leaderboard",
-              "profile",
-              "wallet",
-            ].includes(nav.page)
-              ? () => navigate({ page: "home" })
+            canGoBack
+              ? () => {
+                  const stack = navStackRef.current;
+                  if (stack.length <= 1) return;
+                  const newStack = stack.slice(0, -1);
+                  navStackRef.current = newStack;
+                  setNav(newStack[newStack.length - 1]);
+                  window.history.go(-1);
+                }
               : undefined
           }
         />
@@ -276,6 +238,8 @@ export default function App() {
           style={{
             paddingTop: "56px",
             paddingBottom: showBottomNav ? "90px" : "24px",
+            overscrollBehavior: "none",
+            WebkitOverflowScrolling: "touch",
           }}
         >
           <AnimatePresence mode="wait" initial={false}>
@@ -314,7 +278,11 @@ export default function App() {
                 />
               )}
               {nav.page === "profile" && (
-                <ProfilePage navigate={navigate} playerId={playerId} />
+                <ProfilePage
+                  navigate={navigate}
+                  playerId={playerId}
+                  onSignOut={signOut}
+                />
               )}
               {nav.page === "history" && (
                 <MatchHistoryPage navigate={navigate} playerId={playerId} />
@@ -330,20 +298,20 @@ export default function App() {
           <BottomNav
             current={nav.page as PlayerPage}
             navigate={navigate}
-            isAdmin={isAdminMode}
             announcementCount={announcementCount}
-            onAdminClick={() => {
-              if (isAdminMode) {
-                navigate({ page: "admin-dashboard" });
-              } else {
-                navigate({ page: "admin-login" });
-              }
-            }}
           />
         )}
       </div>
       <Toaster richColors theme="dark" />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <FirebaseAuthProvider>
+      <AppInner />
+    </FirebaseAuthProvider>
   );
 }
 

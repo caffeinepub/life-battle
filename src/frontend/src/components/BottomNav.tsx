@@ -1,28 +1,16 @@
 import { cn } from "@/lib/utils";
-import {
-  Bell,
-  Home,
-  ShieldCheck,
-  Swords,
-  Trophy,
-  User,
-  Wallet,
-} from "lucide-react";
+import { Bell, Home, Swords, Trophy, User, Wallet } from "lucide-react";
 import type { AppNav, PlayerPage } from "../App";
 
 interface BottomNavProps {
   current: PlayerPage;
   navigate: (nav: AppNav) => void;
-  isAdmin?: boolean;
-  onAdminClick?: () => void;
   announcementCount?: number;
 }
 
 export default function BottomNav({
   current,
   navigate,
-  isAdmin,
-  onAdminClick,
   announcementCount = 0,
 }: BottomNavProps) {
   const navItems = [
@@ -94,43 +82,6 @@ export default function BottomNav({
               </button>
             );
           })}
-
-          {/* Admin button — always yellow-tinted to stand out */}
-          <button
-            type="button"
-            onClick={onAdminClick}
-            className={cn(
-              "flex flex-col items-center gap-0.5 px-2 py-1 rounded-xl transition-all native-tap",
-              isAdmin
-                ? "text-yellow-400"
-                : "text-yellow-500/70 hover:text-yellow-400",
-            )}
-            data-ocid="nav.admin.button"
-          >
-            <div
-              className={cn(
-                "relative flex items-center justify-center w-10 h-7 rounded-xl transition-all",
-                isAdmin ? "bg-yellow-400/15" : "bg-yellow-500/10",
-              )}
-            >
-              <ShieldCheck
-                className={cn(
-                  "h-5 w-5 transition-all",
-                  isAdmin
-                    ? "drop-shadow-[0_0_6px_oklch(0.8_0.18_85)]"
-                    : "drop-shadow-[0_0_4px_oklch(0.75_0.16_85)]",
-                )}
-              />
-            </div>
-            <span
-              className={cn(
-                "text-[9px] font-semibold transition-all leading-none",
-                isAdmin ? "text-yellow-400" : "text-yellow-500/70",
-              )}
-            >
-              Admin
-            </span>
-          </button>
         </div>
       </div>
     </nav>
