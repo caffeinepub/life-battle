@@ -19,6 +19,7 @@ import {
   Edit,
   History,
   Loader2,
+  LogOut,
   Mail,
   MessageCircle,
   Share2,
@@ -83,6 +84,9 @@ export default function ProfilePage({
   const [editUsername, setEditUsername] = useState("");
   const [editBio, setEditBio] = useState("");
   const [editColor, setEditColor] = useState("");
+
+  // Logout confirmation state
+  const [logoutOpen, setLogoutOpen] = useState(false);
 
   // KYC state
   const [kycStatus, setKycStatus] = useState<KycStatus>(() =>
@@ -800,15 +804,53 @@ export default function ProfilePage({
         </div>
       </motion.div>
 
-      {/* Logout */}
+      {/* Logout button */}
       <Button
         variant="outline"
         className="w-full border-destructive/30 text-destructive hover:bg-destructive/10"
-        onClick={onSignOut}
+        onClick={() => setLogoutOpen(true)}
         data-ocid="profile.logout.button"
       >
+        <LogOut className="h-4 w-4 mr-2" />
         Logout
       </Button>
+
+      {/* Logout confirmation dialog */}
+      <Dialog open={logoutOpen} onOpenChange={setLogoutOpen}>
+        <DialogContent
+          className="bg-card border-border max-w-sm"
+          data-ocid="profile.logout.dialog"
+        >
+          <DialogHeader>
+            <DialogTitle className="font-heading font-black text-foreground">
+              Confirm Logout
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Are you sure you want to logout from Life Battle?
+          </p>
+          <DialogFooter className="gap-2 flex-row justify-end">
+            <Button
+              variant="ghost"
+              onClick={() => setLogoutOpen(false)}
+              data-ocid="profile.logout.cancel_button"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                onSignOut?.();
+                setLogoutOpen(false);
+              }}
+              data-ocid="profile.logout.confirm_button"
+            >
+              <LogOut className="h-4 w-4 mr-1.5" />
+              Yes, Logout
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

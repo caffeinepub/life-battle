@@ -1,22 +1,13 @@
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Bell, LogOut, Shield } from "lucide-react";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
+import { ArrowLeft } from "lucide-react";
 
 interface AppHeaderProps {
   title: string;
-  isAdmin?: boolean;
   onBack?: () => void;
-  onExitAdmin?: () => void;
+  onRefresh?: () => void;
 }
 
-export default function AppHeader({
-  title,
-  isAdmin,
-  onBack,
-  onExitAdmin,
-}: AppHeaderProps) {
-  const { clear } = useInternetIdentity();
-
+export default function AppHeader({ title, onBack }: AppHeaderProps) {
   return (
     <header
       className="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] z-50 flex items-center justify-between px-3 bg-card/90 backdrop-blur-md border-b border-border"
@@ -59,61 +50,9 @@ export default function AppHeader({
             </span>
           )}
         </div>
-        {isAdmin && (
-          <span className="px-1.5 py-0.5 rounded text-xs bg-primary/20 text-primary font-mono border border-primary/30 shrink-0">
-            ADMIN
-          </span>
-        )}
       </div>
 
-      <div className="flex items-center gap-0.5 shrink-0">
-        {onExitAdmin ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onExitAdmin}
-            className="text-xs text-muted-foreground hover:text-foreground gap-1 native-tap"
-            data-ocid="nav.link"
-          >
-            <Shield className="h-3.5 w-3.5" />
-            Exit Admin
-          </Button>
-        ) : !onBack ? (
-          <>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9 text-muted-foreground hover:text-foreground native-tap"
-              aria-label="Notifications"
-            >
-              <Bell className="h-5 w-5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={clear}
-              className="h-9 w-9 text-muted-foreground hover:text-destructive native-tap"
-              title="Logout"
-              data-ocid="nav.button"
-            >
-              <LogOut className="h-5 w-5" />
-            </Button>
-          </>
-        ) : (
-          !isAdmin && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={clear}
-              className="h-9 w-9 text-muted-foreground hover:text-destructive native-tap"
-              title="Logout"
-              data-ocid="nav.button"
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
-          )
-        )}
-      </div>
+      <div className="flex items-center gap-0.5 shrink-0" />
     </header>
   );
 }

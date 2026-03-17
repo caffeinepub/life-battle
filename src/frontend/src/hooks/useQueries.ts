@@ -288,7 +288,7 @@ export function useGetLeaderboard() {
           p.playerId as number,
           p.username ?? "",
           BigInt(Math.round(p.matchesPlayed ?? 0)),
-          BigInt(Math.round(p.totalKills ?? 0)),
+          BigInt(Math.round(p.totalEarnings ?? 0)),
           BigInt(Math.round(p.wins ?? 0)),
         ]);
       players.sort((a, b) => {

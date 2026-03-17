@@ -1,4 +1,5 @@
 import { Toaster } from "@/components/ui/sonner";
+import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FirebaseAuthProvider, useFirebaseAuth } from "./hooks/useFirebaseAuth";
@@ -28,20 +29,14 @@ export type PlayerPage =
   | "history"
   | "wallet";
 
-export type AdminPage =
-  | "admin-login"
-  | "admin-dashboard"
-  | "admin-create"
-  | "admin-edit"
-  | "admin-players";
-export type AppPage = PlayerPage | AdminPage;
+export type AppPage = PlayerPage;
 
 export type AppNav = {
   page: AppPage;
   matchId?: number;
 };
 
-// Pages that are top-level tabs — back button on these should exit/close the app
+// Pages that are top-level tabs — back button on these should stay in app
 const TAB_PAGES: AppPage[] = [
   "home",
   "free-matches",
@@ -58,13 +53,22 @@ const pageVariants = {
   exit: { opacity: 0, x: -18 },
 };
 
+const PULL_THRESHOLD = 80;
+
 function AppInner() {
   const { user, isLoading: authLoading, signOut } = useFirebaseAuth();
   const { profile, isLoading: profileLoading } = useFirebaseProfile(user?.uid);
+  const queryClient = useQueryClient();
 
   const [nav, setNav] = useState<AppNav>({ page: "home" });
   const navStackRef = useRef<AppNav[]>([{ page: "home" }]);
   const isPopstateRef = useRef(false);
+
+  // Pull-to-refresh state
+  const mainRef = useRef<HTMLElement>(null);
+  const touchStartYRef = useRef(0);
+  const [pullProgress, setPullProgress] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const [announcementCount, setAnnouncementCount] = useState(() => {
     const lastSeen = Number.parseInt(
@@ -84,15 +88,12 @@ function AppInner() {
     const onPopstate = () => {
       const stack = navStackRef.current;
       if (stack.length <= 1) {
-        // Nothing to pop — let the browser handle it (closes app / goes back in browser)
         return;
       }
-      // Pop the current page and go to the previous one
       isPopstateRef.current = true;
       const newStack = stack.slice(0, -1);
       navStackRef.current = newStack;
       setNav(newStack[newStack.length - 1]);
-      // Re-push a history entry so the next back press still fires popstate
       window.history.pushState({ lb: true }, "");
     };
     window.addEventListener("popstate", onPopstate);
@@ -135,16 +136,51 @@ function AppInner() {
     }
     const isTabPage = TAB_PAGES.includes(navState.page);
     if (isTabPage) {
-      // Tab-level navigation: replace the current stack entry
       navStackRef.current = [navState];
       window.history.replaceState({ lb: true }, "");
     } else {
-      // Deep navigation: push onto the stack
       navStackRef.current = [...navStackRef.current, navState];
       window.history.pushState({ lb: true }, "");
     }
     setNav(navState);
   }, []);
+
+  const handleRefresh = useCallback(() => {
+    queryClient.invalidateQueries();
+  }, [queryClient]);
+
+  // Touch handlers for pull-to-refresh
+  const handleTouchStart = useCallback((e: React.TouchEvent<HTMLElement>) => {
+    if (mainRef.current && mainRef.current.scrollTop === 0) {
+      touchStartYRef.current = e.touches[0].clientY;
+    } else {
+      touchStartYRef.current = -1;
+    }
+  }, []);
+
+  const handleTouchMove = useCallback(
+    (e: React.TouchEvent<HTMLElement>) => {
+      if (touchStartYRef.current < 0 || isRefreshing) return;
+      const dy = e.touches[0].clientY - touchStartYRef.current;
+      if (dy <= 0) return;
+      const progress = Math.min(dy / PULL_THRESHOLD, 1.2);
+      setPullProgress(progress);
+    },
+    [isRefreshing],
+  );
+
+  const handleTouchEnd = useCallback(() => {
+    if (touchStartYRef.current < 0) return;
+    touchStartYRef.current = -1;
+    if (pullProgress >= 1) {
+      setIsRefreshing(true);
+      setPullProgress(0);
+      handleRefresh();
+      setTimeout(() => setIsRefreshing(false), 800);
+    } else {
+      setPullProgress(0);
+    }
+  }, [pullProgress, handleRefresh]);
 
   // Auth initializing
   if (authLoading) {
@@ -196,7 +232,6 @@ function AppInner() {
 
   const playerId = profile.playerId;
 
-  // Player mode
   const bottomNavPages: PlayerPage[] = [
     "home",
     "free-matches",
@@ -211,6 +246,12 @@ function AppInner() {
 
   const canGoBack =
     navStackRef.current.length > 1 && !TAB_PAGES.includes(nav.page);
+
+  // Pull indicator position and appearance
+  const indicatorTop = 56 + 8 + pullProgress * 48;
+  const isReady = pullProgress >= 1;
+  const circumference = 2 * Math.PI * 10;
+  const dashOffset = circumference * (1 - Math.min(pullProgress, 1));
 
   return (
     <div className="bg-background overflow-hidden" style={{ height: "100dvh" }}>
@@ -232,15 +273,93 @@ function AppInner() {
                 }
               : undefined
           }
+          onRefresh={handleRefresh}
         />
+
+        {/* Pull-to-refresh indicator */}
+        {(pullProgress > 0 || isRefreshing) && (
+          <div
+            className="absolute left-1/2 z-40 pointer-events-none"
+            style={{
+              top: `${indicatorTop}px`,
+              transform: "translateX(-50%)",
+              transition: pullProgress === 0 ? "top 0.3s ease" : "none",
+            }}
+          >
+            <div
+              className="w-9 h-9 rounded-full flex items-center justify-center shadow-lg"
+              style={{
+                background: "oklch(0.18 0.02 260)",
+                border: `2px solid ${
+                  isReady || isRefreshing
+                    ? "oklch(0.72 0.2 38)"
+                    : "oklch(0.35 0.04 260)"
+                }`,
+              }}
+            >
+              {isRefreshing ? (
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 18 18"
+                  aria-hidden="true"
+                >
+                  <circle
+                    cx="9"
+                    cy="9"
+                    r="6"
+                    fill="none"
+                    stroke="oklch(0.72 0.2 38)"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeDasharray={`${circumference * 0.7} ${circumference * 0.3}`}
+                    style={{
+                      transformOrigin: "9px 9px",
+                      animation: "spin 0.7s linear infinite",
+                    }}
+                  />
+                </svg>
+              ) : (
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 18 18"
+                  aria-hidden="true"
+                >
+                  <circle
+                    cx="9"
+                    cy="9"
+                    r="6"
+                    fill="none"
+                    stroke={
+                      isReady ? "oklch(0.72 0.2 38)" : "oklch(0.5 0.06 260)"
+                    }
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeDasharray={`${circumference}`}
+                    strokeDashoffset={dashOffset}
+                    style={{
+                      transformOrigin: "9px 9px",
+                      transform: "rotate(-90deg)",
+                    }}
+                  />
+                </svg>
+              )}
+            </div>
+          </div>
+        )}
+
         <main
-          className="flex-1 overflow-y-auto"
+          ref={mainRef}
+          className="flex-1 overflow-y-scroll scrollbar-hide"
           style={{
             paddingTop: "56px",
             paddingBottom: showBottomNav ? "90px" : "24px",
             overscrollBehavior: "none",
-            WebkitOverflowScrolling: "touch",
           }}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
         >
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
@@ -326,11 +445,6 @@ function getPageTitle(page: AppPage): string {
     profile: "My Profile",
     history: "Match History",
     wallet: "Wallet",
-    "admin-login": "Admin Login",
-    "admin-dashboard": "Admin Dashboard",
-    "admin-create": "Create Match",
-    "admin-edit": "Edit Match",
-    "admin-players": "Player Management",
   };
   return titles[page] ?? "Life Battle";
 }

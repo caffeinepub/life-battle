@@ -1,6 +1,6 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { Crown, Medal, Swords, Trophy } from "lucide-react";
+import { Crown, Medal, Trophy } from "lucide-react";
 import { motion } from "motion/react";
 import { Component, type ReactNode } from "react";
 import type { AppNav } from "../App";
@@ -206,7 +206,7 @@ function LeaderboardContent({ navigate: _navigate }: LeaderboardPageProps) {
                 Played
               </div>
               <div className="w-8 text-[10px] text-muted-foreground uppercase tracking-wide">
-                Kills
+                Earn
               </div>
               <div className="w-8 text-[10px] text-muted-foreground uppercase tracking-wide">
                 Wins
@@ -215,7 +215,7 @@ function LeaderboardContent({ navigate: _navigate }: LeaderboardPageProps) {
           </div>
 
           {leaderboard.map(
-            ([playerId, username, matchesPlayed, totalKills, wins], idx) => {
+            ([playerId, username, matchesPlayed, totalEarnings, wins], idx) => {
               const rank = idx + 1;
               const isTop3 = rank <= 3;
               return (
@@ -263,9 +263,8 @@ function LeaderboardContent({ navigate: _navigate }: LeaderboardPageProps) {
                       </p>
                     </div>
                     <div className="w-8">
-                      <p className="font-mono font-bold text-sm text-red-400 flex items-center justify-end gap-0.5">
-                        <Swords className="h-3 w-3" />
-                        {totalKills.toString()}
+                      <p className="font-mono font-bold text-sm text-yellow-400 flex items-center justify-end gap-0.5">
+                        🪙{totalEarnings.toString()}
                       </p>
                     </div>
                     <div className="w-8">
